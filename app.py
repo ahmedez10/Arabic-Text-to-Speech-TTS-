@@ -175,8 +175,6 @@ with gr.Blocks() as demo:
         """
 # Chatterbox Egyptian Arabic (Masri) TTS Demo 🇪🇬
 Generate natural Egyptian Arabic speech from text, with optional reference audio styling.
-
-For a hosted version of Chatterbox Multilingual and for finetuning, please visit resemble.ai
 """
     )
 

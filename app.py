@@ -68,7 +68,7 @@ def get_or_load_model():
     if MODEL is None:
         print("Model not loaded, initializing...")
         try:
-            MODEL = ChatterboxMultilingualTTS.from_checkpoint(str(ckpt_dir),DEVICE)
+            MODEL = ChatterboxMultilingualTTS.from_checkpoint(str(ckpt_dir) + "/",DEVICE)
             if hasattr(MODEL, 'to') and str(MODEL.device) != DEVICE:
                 MODEL.to(DEVICE)
             print(f"Model loaded successfully. Internal device: {getattr(MODEL, 'device', 'N/A')}")

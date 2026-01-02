@@ -114,7 +114,6 @@ def set_seed(seed: int):
 @spaces.GPU
 def generate_tts_audio(
     text_input: str,
-    language_id: str,
     audio_prompt_path_input: str = None,
     exaggeration_input: float = 0.5,
     temperature_input: float = 0.8,
@@ -128,6 +127,8 @@ def generate_tts_audio(
 
     Note: For Arabic here, the demo text + examples are Egyptian Arabic (Masri).
     """
+
+    language_id = "ar"
     current_model = get_or_load_model()
     if current_model is None:
         raise RuntimeError("TTS model is not loaded.")
@@ -179,8 +180,6 @@ For a hosted version of Chatterbox Multilingual and for finetuning, please visit
 """
     )
 
-    gr.Markdown(get_supported_languages_display())
-
     with gr.Row():
         with gr.Column():
             initial_lang = "ar"
@@ -196,12 +195,6 @@ For a hosted version of Chatterbox Multilingual and for finetuning, please visit
                 random_btn = gr.Button("🎲 Random Egyptian Example", variant="secondary")
                 clear_btn = gr.Button("🧹 Clear", variant="secondary")
 
-            language_id = gr.Dropdown(
-                choices=list(ChatterboxMultilingualTTS.get_supported_languages().keys()),
-                value=initial_lang,
-                label="Language (Arabic = Egyptian / Masri)",
-                info="Arabic defaults in this demo are Egyptian Arabic (Masri).",
-            )
 
             ref_wav = gr.Audio(
                 sources=["upload", "microphone"],
@@ -237,22 +230,15 @@ For a hosted version of Chatterbox Multilingual and for finetuning, please visit
         with gr.Column():
             audio_output = gr.Audio(label="Output Audio")
 
-        def on_language_change(lang, current_ref, current_text):
-            return default_audio_for_ui(lang), default_text_for_ui(lang)
 
-        language_id.change(
-            fn=on_language_change,
-            inputs=[language_id, ref_wav, text],
-            outputs=[ref_wav, text],
-            show_progress=False,
-        )
+   
 
         random_btn.click(fn=pick_random_egyptian_example, inputs=[], outputs=[text])
         clear_btn.click(fn=lambda: "", inputs=[], outputs=[text])
 
     run_btn.click(
         fn=generate_tts_audio,
-        inputs=[text, language_id, ref_wav, exaggeration, temp, seed_num, cfg_weight],
+        inputs=[text, ref_wav, exaggeration, temp, seed_num, cfg_weight],
         outputs=[audio_output],
     )
 

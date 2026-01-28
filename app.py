@@ -15,7 +15,7 @@ from src.chatterbox.mtl_tts import ChatterboxMultilingualTTS, SUPPORTED_LANGUAGE
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"🚀 Running on device: {DEVICE}")
 
-REPO_ID = "oddadmix/chatterbox-egyptian-v0"
+REPO_ID = "NAMAA-Space/thamaneya-mo5tlf-chatterbox-tts-2-epochs"
 
 ckpt_dir = Path(
     snapshot_download(

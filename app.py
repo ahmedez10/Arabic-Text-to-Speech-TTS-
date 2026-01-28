@@ -45,7 +45,7 @@ MODEL = None
 # =============================
 LANGUAGE_CONFIG = {
     "ar": {
-        "audio": "https://huggingface.co/spaces/Omartificial-Intelligence-Space/NAMAA-Saudi-Voice/blob/main/refrence.flac",
+        "audio": "./refrence.flac",
         # Saudi dialect default
         "text": "آبي أروح البقالة أشتري كم غرض وأرجع بسرعة.",
     }

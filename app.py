@@ -135,49 +135,112 @@ def pick_random_saudi_example():
     return random.choice(SAUDI_EXAMPLES)
 
 # =============================
-# Custom CSS (HTML Design)
+# Custom CSS – Creative UI
 # =============================
 CUSTOM_CSS = """
+:root{
+  --green1:#0b7a3b;
+  --green2:#16a34a;
+  --green3:#22c55e;
+  --ink:#0f172a;
+  --muted:#475569;
+  --card:#ffffff;
+  --glass: rgba(255,255,255,0.75);
+}
+
 .gradio-container {
   direction: rtl;
-  font-family: 'Noto Naskh Arabic', 'Segoe UI', Tahoma, Arial;
+  font-family: "Noto Naskh Arabic", "Segoe UI", Tahoma, Arial;
+  background:
+    radial-gradient(1200px 400px at 90% -10%, rgba(34,197,94,.15), transparent),
+    radial-gradient(800px 300px at 10% 10%, rgba(22,163,74,.12), transparent);
 }
 
+/* ===== HERO ===== */
 .namaa-hero {
-  background: linear-gradient(135deg, #0b7a3b, #16a34a);
+  background: linear-gradient(135deg, var(--green1), var(--green2));
   color: white;
-  padding: 22px;
-  border-radius: 18px;
-  text-align: center;
-  margin-bottom: 16px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  padding: 28px 24px;
+  border-radius: 22px;
+  margin-bottom: 18px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
 }
 
-.namaa-hero h1 {
-  font-size: 30px;
-  margin-bottom: 6px;
-  font-weight: 800;
+.namaa-hero::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(300px 300px at 90% 10%, rgba(255,255,255,.25), transparent);
 }
 
-.namaa-hero p {
+.namaa-hero h1{
+  font-size: 32px;
+  font-weight: 900;
+  margin: 0 0 6px 0;
+}
+
+.namaa-hero p{
+  margin: 0;
   font-size: 15px;
-  opacity: 0.95;
+  opacity: .95;
 }
 
-.namaa-card {
-  background: white;
-  border-radius: 16px;
-  padding: 14px;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
-  border: 1px solid rgba(0,0,0,0.06);
+/* Badges */
+.badges{
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.badge{
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.35);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
 }
 
-.namaa-note {
-  background: rgba(22,163,74,0.1);
-  border: 1px solid rgba(22,163,74,0.3);
-  border-radius: 12px;
+/* ===== Cards ===== */
+.namaa-card{
+  background: var(--glass);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 16px;
+  border: 1px solid rgba(0,0,0,.08);
+  box-shadow: 0 12px 30px rgba(2,6,23,.12);
+}
+
+/* Section titles */
+.section-title{
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+/* Notes */
+.namaa-note{
+  background: rgba(34,197,94,0.12);
+  border: 1px solid rgba(34,197,94,0.35);
+  border-radius: 14px;
   padding: 10px;
   font-size: 13px;
+  color: var(--ink);
+}
+
+/* Buttons */
+button.primary{
+  background: linear-gradient(135deg, var(--green2), var(--green3)) !important;
+  border: none !important;
+  box-shadow: 0 12px 25px rgba(22,163,74,.35) !important;
+}
+button.secondary{
+  border-radius: 14px !important;
 }
 """
 
@@ -185,46 +248,62 @@ CUSTOM_CSS = """
 # UI
 # =============================
 with gr.Blocks(css=CUSTOM_CSS, theme=gr.themes.Soft()) as demo:
+
+    # ===== HERO =====
     gr.HTML(
         """
 <div class="namaa-hero">
-  <h1>🇸🇦 NAMAA Saudi Dialect TTS</h1>
-  <p>تحويل النص باللهجة السعودية إلى صوت طبيعي<br/>
-  مدعوم من مجتمع <b>نماء</b></p>
+  <h1>🇸🇦 NAMAA-AR-SA</h1>
+  <p>Saudi Dialect Text-to-Speech</p>
+  <div class="badges">
+    <span class="badge">Saudi Arabic</span>
+    <span class="badge">AR-SA</span>
+    <span class="badge">TTS</span>
+    <span class="badge">NAMAA Community</span>
+  </div>
 </div>
 """
     )
 
     with gr.Row():
-        with gr.Column():
+        # ===== LEFT: INPUT =====
+        with gr.Column(scale=1):
             with gr.Group(elem_classes=["namaa-card"]):
+
+                gr.HTML('<div class="section-title">📝 النص الصوتي</div>')
+
                 text = gr.Textbox(
                     value=default_text_for_ui("ar"),
-                    label="النص (لهجة سعودية)",
+                    placeholder="اكتب جملة سعودية… مثال: آبي أروح البقالة وأرجع",
                     max_lines=5,
                 )
 
                 with gr.Row():
-                    random_btn = gr.Button("🎲 مثال سعودي")
-                    clear_btn = gr.Button("🧹 مسح")
+                    random_btn = gr.Button("🎲 مثال سعودي", variant="secondary")
+                    clear_btn = gr.Button("🧹 مسح", variant="secondary")
+
+                gr.HTML('<div class="section-title">🎙️ الصوت المرجعي</div>')
 
                 ref_wav = gr.Audio(
                     sources=["upload", "microphone"],
                     type="filepath",
-                    label="صوت مرجعي (اختياري)",
                     value=default_audio_for_ui("ar"),
                 )
 
                 gr.HTML(
                     """
 <div class="namaa-note">
-<b>ملاحظة:</b> يفضّل أن يكون الصوت المرجعي سعودي لتجنّب انتقال لهجة مختلفة.
+يفضّل استخدام صوت سعودي مرجعي لتفادي انتقال لهجة مختلفة.
 </div>
 """
                 )
 
-                exaggeration = gr.Slider(0.25, 2.0, value=0.5, label="Exaggeration")
-                cfg_weight = gr.Slider(0.0, 1.0, value=0.5, label="CFG / Pace")
+                exaggeration = gr.Slider(
+                    0.25, 2.0, value=0.5, label="Exaggeration"
+                )
+                cfg_weight = gr.Slider(
+                    0.0, 1.0, value=0.5, label="CFG / Pace"
+                )
 
                 with gr.Accordion("⚙️ إعدادات متقدمة", open=False):
                     seed_num = gr.Number(value=0, label="Seed")
@@ -232,9 +311,11 @@ with gr.Blocks(css=CUSTOM_CSS, theme=gr.themes.Soft()) as demo:
 
                 run_btn = gr.Button("🔊 توليد الصوت", variant="primary")
 
-        with gr.Column():
+        # ===== RIGHT: OUTPUT =====
+        with gr.Column(scale=1):
             with gr.Group(elem_classes=["namaa-card"]):
-                audio_output = gr.Audio(label="الصوت الناتج")
+                gr.HTML('<div class="section-title">🎧 الناتج</div>')
+                audio_output = gr.Audio()
 
     random_btn.click(fn=pick_random_saudi_example, inputs=[], outputs=[text])
     clear_btn.click(fn=lambda: "", inputs=[], outputs=[text])

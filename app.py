@@ -264,8 +264,8 @@ with gr.Blocks(css=CUSTOM_CSS, theme=gr.themes.Soft()) as demo:
       </div>
     </div>
     """
-    )
-    with gr.Row():
+   )
+   with gr.Row():
         # ===== LEFT: INPUT =====
         with gr.Column(scale=1):
             with gr.Group(elem_classes=["namaa-card"]):

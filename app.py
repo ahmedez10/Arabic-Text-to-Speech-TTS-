@@ -46,12 +46,10 @@ MODEL = None
 LANGUAGE_CONFIG = {
     "ar": {
         "audio": "./refrence.flac",
-        # Saudi dialect default
         "text": "آبي أروح البقالة أشتري كم غرض وأرجع بسرعة.",
     }
 }
 
-# Saudi Dialect Examples (General / Najdi-neutral)
 SAUDI_EXAMPLES = [
     "آبي أروح البقالة أشتري كم غرض وأرجع بسرعة.",
     "آبي أطلع مشوار خفيف وبأرجع قبل المغرب.",
@@ -64,44 +62,36 @@ SAUDI_EXAMPLES = [
 ]
 
 # =============================
-# UI Helpers
+# Helpers
 # =============================
 def default_audio_for_ui(lang: str) -> str | None:
     return LANGUAGE_CONFIG.get(lang, {}).get("audio")
 
-
 def default_text_for_ui(lang: str) -> str:
     return LANGUAGE_CONFIG.get(lang, {}).get("text", "")
-
 
 def get_or_load_model():
     global MODEL
     if MODEL is None:
-        print("Model not loaded, initializing...")
         MODEL = ChatterboxMultilingualTTS.from_checkpoint(str(ckpt_dir) + "/", DEVICE)
         if hasattr(MODEL, "to") and str(getattr(MODEL, "device", "")) != DEVICE:
             MODEL.to(DEVICE)
-        print(f"Model loaded successfully. Internal device: {getattr(MODEL, 'device', 'N/A')}")
     return MODEL
-
 
 try:
     get_or_load_model()
 except Exception as e:
-    print(f"CRITICAL: Failed to load model on startup. Error: {e}")
-
+    print(f"CRITICAL: Failed to load model. Error: {e}")
 
 def set_seed(seed: int):
     torch.manual_seed(seed)
     if DEVICE == "cuda":
-        torch.cuda.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
     random.seed(seed)
     np.random.seed(seed)
 
-
 # =============================
-# TTS Generation (UNCHANGED)
+# TTS (UNCHANGED)
 # =============================
 @spaces.GPU
 def generate_tts_audio(
@@ -113,19 +103,16 @@ def generate_tts_audio(
     cfgw_input: float = 0.5,
 ) -> tuple[int, np.ndarray]:
 
-    language_id = "ar"
     current_model = get_or_load_model()
-    if current_model is None:
-        raise RuntimeError("TTS model is not loaded.")
 
     if seed_num_input and int(seed_num_input) != 0:
         set_seed(int(seed_num_input))
 
     text_input = (text_input or "").strip()
     if not text_input:
-        raise gr.Error("الرجاء إدخال نص للتحويل إلى صوت.")
+        raise gr.Error("الرجاء إدخال نص.")
 
-    chosen_prompt = audio_prompt_path_input or default_audio_for_ui(language_id)
+    chosen_prompt = audio_prompt_path_input or default_audio_for_ui("ar")
 
     generate_kwargs = {
         "exaggeration": float(exaggeration_input),
@@ -138,86 +125,116 @@ def generate_tts_audio(
 
     wav = current_model.generate(
         text_input[:300],
-        language_id=language_id,
+        language_id="ar",
         **generate_kwargs,
     )
 
     return (current_model.sr, wav.squeeze(0).numpy())
 
-
 def pick_random_saudi_example():
     return random.choice(SAUDI_EXAMPLES)
 
+# =============================
+# Custom CSS (HTML Design)
+# =============================
+CUSTOM_CSS = """
+.gradio-container {
+  direction: rtl;
+  font-family: 'Noto Naskh Arabic', 'Segoe UI', Tahoma, Arial;
+}
+
+.namaa-hero {
+  background: linear-gradient(135deg, #0b7a3b, #16a34a);
+  color: white;
+  padding: 22px;
+  border-radius: 18px;
+  text-align: center;
+  margin-bottom: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+}
+
+.namaa-hero h1 {
+  font-size: 30px;
+  margin-bottom: 6px;
+  font-weight: 800;
+}
+
+.namaa-hero p {
+  font-size: 15px;
+  opacity: 0.95;
+}
+
+.namaa-card {
+  background: white;
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+.namaa-note {
+  background: rgba(22,163,74,0.1);
+  border: 1px solid rgba(22,163,74,0.3);
+  border-radius: 12px;
+  padding: 10px;
+  font-size: 13px;
+}
+"""
 
 # =============================
-# Gradio UI 🇸🇦✨
+# UI
 # =============================
-with gr.Blocks(theme=gr.themes.Soft()) as demo:
-    gr.Markdown(
+with gr.Blocks(css=CUSTOM_CSS, theme=gr.themes.Soft()) as demo:
+    gr.HTML(
         """
-<div style="text-align:center">
-
-# 🇸🇦 NAMAA Saudi Dialect TTS
-### تحويل النص السعودي إلى صوت طبيعي
-
-**نموذج صوتي باللهجة السعودية**
-<br/>
-مدعوم من مجتمع **نماء** – Arabic AI Community
-
+<div class="namaa-hero">
+  <h1>🇸🇦 NAMAA Saudi Dialect TTS</h1>
+  <p>تحويل النص باللهجة السعودية إلى صوت طبيعي<br/>
+  مدعوم من مجتمع <b>نماء</b></p>
 </div>
 """
     )
 
     with gr.Row():
-        with gr.Column(scale=1):
-            initial_lang = "ar"
+        with gr.Column():
+            with gr.Group(elem_classes=["namaa-card"]):
+                text = gr.Textbox(
+                    value=default_text_for_ui("ar"),
+                    label="النص (لهجة سعودية)",
+                    max_lines=5,
+                )
 
-            text = gr.Textbox(
-                value=default_text_for_ui(initial_lang),
-                placeholder="اكتب جملة باللهجة السعودية… مثال: آبي أروح البقالة وأرجع",
-                label="النص (لهجة سعودية – حد أقصى 300 حرف)",
-                max_lines=5,
-            )
+                with gr.Row():
+                    random_btn = gr.Button("🎲 مثال سعودي")
+                    clear_btn = gr.Button("🧹 مسح")
 
-            with gr.Row():
-                random_btn = gr.Button("🎲 مثال سعودي عشوائي", variant="secondary")
-                clear_btn = gr.Button("🧹 مسح النص", variant="secondary")
+                ref_wav = gr.Audio(
+                    sources=["upload", "microphone"],
+                    type="filepath",
+                    label="صوت مرجعي (اختياري)",
+                    value=default_audio_for_ui("ar"),
+                )
 
-            ref_wav = gr.Audio(
-                sources=["upload", "microphone"],
-                type="filepath",
-                label="ملف صوت مرجعي (اختياري)",
-                value=default_audio_for_ui(initial_lang),
-            )
-
-            gr.Markdown(
-                """
-💡 **ملاحظة**  
-يفضّل أن يكون الصوت المرجعي بنفس اللهجة لتفادي انتقال نبرة غير مرغوبة.
-في حال عدم الحاجة، اتركه فارغًا.
+                gr.HTML(
+                    """
+<div class="namaa-note">
+<b>ملاحظة:</b> يفضّل أن يكون الصوت المرجعي سعودي لتجنّب انتقال لهجة مختلفة.
+</div>
 """
-            )
+                )
 
-            exaggeration = gr.Slider(
-                0.25, 2.0, step=0.05,
-                label="Exaggeration (القيمة الطبيعية ≈ 0.5)",
-                value=0.5,
-            )
+                exaggeration = gr.Slider(0.25, 2.0, value=0.5, label="Exaggeration")
+                cfg_weight = gr.Slider(0.0, 1.0, value=0.5, label="CFG / Pace")
 
-            cfg_weight = gr.Slider(
-                0.0, 1.0, step=0.05,
-                label="CFG / Pace (0.2 – 1.0 مناسب)",
-                value=0.5,
-            )
+                with gr.Accordion("⚙️ إعدادات متقدمة", open=False):
+                    seed_num = gr.Number(value=0, label="Seed")
+                    temp = gr.Slider(0.05, 5.0, value=0.8, label="Temperature")
 
-            with gr.Accordion("⚙️ إعدادات متقدمة", open=False):
-                seed_num = gr.Number(value=0, label="Seed (0 = عشوائي)")
-                temp = gr.Slider(0.05, 5.0, step=0.05, label="Temperature", value=0.8)
+                run_btn = gr.Button("🔊 توليد الصوت", variant="primary")
 
-            run_btn = gr.Button("🔊 توليد الصوت", variant="primary")
-
-        with gr.Column(scale=1):
-            audio_output = gr.Audio(label="الصوت الناتج")
+        with gr.Column():
+            with gr.Group(elem_classes=["namaa-card"]):
+                audio_output = gr.Audio(label="الصوت الناتج")
 
     random_btn.click(fn=pick_random_saudi_example, inputs=[], outputs=[text])
     clear_btn.click(fn=lambda: "", inputs=[], outputs=[text])

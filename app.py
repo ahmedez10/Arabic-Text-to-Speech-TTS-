@@ -250,14 +250,15 @@ button.secondary{
 with gr.Blocks(css=CUSTOM_CSS, theme=gr.themes.Soft()) as demo:
 
     # ===== HERO =====
-    gr.HTML(
-        """
-<div class="namaa-hero">
-  <h1>🇸🇦 NAMAA-AR-SA</h1>
+   gr.HTML(
+    """
+<div class="namaa-hero" style="text-align:center;">
+  <h1 style="margin:0;">NAMAA-Space / NAMAA-Saudi-TTS</h1>
   <p>Saudi Dialect Text-to-Speech</p>
-  <div class="badges">
-    <span class="badge">Saudi Arabic</span>
+
+  <div class="badges" style="justify-content:center;">
     <span class="badge">AR-SA</span>
+    <span class="badge">Saudi Arabic</span>
     <span class="badge">TTS</span>
     <span class="badge">NAMAA Community</span>
   </div>

@@ -7,6 +7,7 @@ import os
 import gradio as gr
 import spaces
 from huggingface_hub import snapshot_download
+from safetensors.torch import load_file as load_safetensors
 
 from src.chatterbox.mtl_tts import ChatterboxMultilingualTTS, SUPPORTED_LANGUAGES
 
@@ -73,9 +74,22 @@ def default_text_for_ui(lang: str) -> str:
 def get_or_load_model():
     global MODEL
     if MODEL is None:
-        MODEL = ChatterboxMultilingualTTS.from_checkpoint(str(ckpt_dir) + "/", DEVICE)
+        print("Loading model using from_pretrained...")
+        # Load base model
+        MODEL = ChatterboxMultilingualTTS.from_pretrained(device=DEVICE)
+        
+        # Load and replace t3 state from safetensors
+        t3_path = os.path.join(ckpt_dir, "t3_mtl23ls_v2.safetensors")
+        print(f"Loading t3 state from: {t3_path}")
+        t3_state = load_safetensors(t3_path, device=DEVICE)
+        MODEL.t3.load_state_dict(t3_state)
+        MODEL.t3.to(DEVICE).eval()
+        
+        # Ensure entire model is on correct device
         if hasattr(MODEL, "to") and str(getattr(MODEL, "device", "")) != DEVICE:
             MODEL.to(DEVICE)
+        
+        print("Model loaded successfully!")
     return MODEL
 
 try:
@@ -142,7 +156,6 @@ CUSTOM_CSS = """
   direction: rtl;
   font-family: 'Noto Naskh Arabic', 'Segoe UI', Tahoma, Arial;
 }
-
 .namaa-hero {
   background: linear-gradient(135deg, #0b7a3b, #16a34a);
   color: white;
@@ -152,18 +165,15 @@ CUSTOM_CSS = """
   margin-bottom: 16px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.15);
 }
-
 .namaa-hero h1 {
   font-size: 30px;
   margin-bottom: 6px;
   font-weight: 800;
 }
-
 .namaa-hero p {
   font-size: 15px;
   opacity: 0.95;
 }
-
 .namaa-card {
   background: white;
   border-radius: 16px;
@@ -171,7 +181,6 @@ CUSTOM_CSS = """
   box-shadow: 0 6px 18px rgba(0,0,0,0.08);
   border: 1px solid rgba(0,0,0,0.06);
 }
-
 .namaa-note {
   background: rgba(22,163,74,0.1);
   border: 1px solid rgba(22,163,74,0.3);

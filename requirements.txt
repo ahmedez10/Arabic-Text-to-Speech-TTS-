@@ -13,7 +13,4 @@ safetensors
 
 # Optional language-specific dependencies
 # Uncomment the ones you need for specific languages:
- spacy_pkuseg          # For Chinese text segmentation
- pykakasi>=2.2.0       # For Japanese text processing (Kanji to Hiragana)
- russian-text-stresser @ git+https://github.com/Vuizur/add-stress-to-epub
 # dicta-onnx>=0.1.0     # For Hebrew diacritization

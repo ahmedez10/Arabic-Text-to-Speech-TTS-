@@ -1,5 +1,5 @@
 ---
-title: Saudi Arabic TTS
+title: Egyptian Arabic TTS
 emoji: 🌎
 colorFrom: indigo
 colorTo: green

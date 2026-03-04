@@ -17,7 +17,7 @@ from src.chatterbox.mtl_tts import ChatterboxMultilingualTTS, SUPPORTED_LANGUAGE
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"🚀 Running on device: {DEVICE}")
 
-REPO_ID = "NAMAA-Space/NAMAA-Saudi-TTS"
+REPO_ID = "NAMAA-Space/NAMAA-Egyptian-TTS"
 
 ckpt_dir = Path(
     snapshot_download(
@@ -42,24 +42,21 @@ ckpt_dir = Path(
 MODEL = None
 
 # =============================
-# Saudi Arabic UI Config 🇸🇦
+# Egyptian Arabic UI Config 🇪🇬
 # =============================
 LANGUAGE_CONFIG = {
     "ar": {
         "audio": "./refrence.flac",
-        "text": "آبي أروح البقالة أشتري كم غرض وأرجع بسرعة.",
+        "text": "انا سبت الشغل و راجع دلوقتي علي طول.",
     }
 }
 
-SAUDI_EXAMPLES = [
-    "آبي أروح البقالة أشتري كم غرض وأرجع بسرعة.",
-    "آبي أطلع مشوار خفيف وبأرجع قبل المغرب.",
-    "ترى الموضوع بسيط، خلّصه اليوم وارتاح.",
-    "أنا بالطريق الحين، باقي عشر دقايق وأوصل.",
-    "خلّنا نبدأ اليوم، والباقي يجي مع الوقت.",
-    "وش رايك نخلص الشغل اليوم ونرتاح بكرة؟",
-    "إذا احتجت شي، كلّمني وأنا أجيك.",
-    "الوضع تمام، الأمور ماشية مثل ما نبي.",
+EGYPTIAN_EXAMPLES = [
+    "امبارح كنت بتفرج على فيلم، وفجأة الكهربا قطعت.",
+    "أول ما وصلت البيت، غيرت هدومي وقعدت أرتاح شوية.",
+    "مش كل مرة الحاجة تمشي زي ما إحنا مخططين.",
+    "الجو حر قوي.",
+    "اللي فات كان حاجة ودلوقتي حاجة تانية خالص.",
 ]
 
 # =============================
@@ -145,8 +142,8 @@ def generate_tts_audio(
 
     return (current_model.sr, wav.squeeze(0).numpy())
 
-def pick_random_saudi_example():
-    return random.choice(SAUDI_EXAMPLES)
+def pick_random_egyptian_example():
+    return random.choice(EGYPTIAN_EXAMPLES)
 
 # =============================
 # Custom CSS (HTML Design)
@@ -197,8 +194,8 @@ with gr.Blocks(css=CUSTOM_CSS, theme=gr.themes.Soft()) as demo:
     gr.HTML(
         """
 <div class="namaa-hero">
-  <h1>🇸🇦 NAMAA Saudi Dialect TTS</h1>
-  <p>تحويل النص باللهجة السعودية إلى صوت طبيعي<br/>
+  <h1>🇪🇬 NAMAA Egyptian Dialect TTS</h1>
+  <p>تحويل النص باللهجة المصرية إلى صوت طبيعي<br/>
   مدعوم من مجتمع <b>نماء</b></p>
 </div>
 """
@@ -214,7 +211,7 @@ with gr.Blocks(css=CUSTOM_CSS, theme=gr.themes.Soft()) as demo:
                 )
 
                 with gr.Row():
-                    random_btn = gr.Button("🎲 مثال سعودي")
+                    random_btn = gr.Button("🎲 مثال مصري")
                     clear_btn = gr.Button("🧹 مسح")
 
                 ref_wav = gr.Audio(
@@ -227,7 +224,7 @@ with gr.Blocks(css=CUSTOM_CSS, theme=gr.themes.Soft()) as demo:
                 gr.HTML(
                     """
 <div class="namaa-note">
-<b>ملاحظة:</b> يفضّل أن يكون الصوت المرجعي سعودي لتجنّب انتقال لهجة مختلفة.
+<b>ملاحظة:</b> يفضّل أن يكون الصوت المرجعي مصري لتجنّب انتقال لهجة مختلفة.
 </div>
 """
                 )
@@ -245,7 +242,7 @@ with gr.Blocks(css=CUSTOM_CSS, theme=gr.themes.Soft()) as demo:
             with gr.Group(elem_classes=["namaa-card"]):
                 audio_output = gr.Audio(label="الصوت الناتج")
 
-    random_btn.click(fn=pick_random_saudi_example, inputs=[], outputs=[text])
+    random_btn.click(fn=pick_random_egyptian_example, inputs=[], outputs=[text])
     clear_btn.click(fn=lambda: "", inputs=[], outputs=[text])
 
     run_btn.click(

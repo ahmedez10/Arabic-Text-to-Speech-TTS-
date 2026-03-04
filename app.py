@@ -206,7 +206,7 @@ with gr.Blocks(css=CUSTOM_CSS, theme=gr.themes.Soft()) as demo:
             with gr.Group(elem_classes=["namaa-card"]):
                 text = gr.Textbox(
                     value=default_text_for_ui("ar"),
-                    label="النص (لهجة سعودية)",
+                    label="النص (لهجة مصرية)",
                     max_lines=5,
                 )
 

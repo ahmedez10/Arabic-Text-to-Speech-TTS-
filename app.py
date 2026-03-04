@@ -46,7 +46,7 @@ MODEL = None
 # =============================
 LANGUAGE_CONFIG = {
     "ar": {
-        "audio": "./refrence.flac",
+        "audio": "./female_voice.wav",
         "text": "انا سبت الشغل و راجع دلوقتي علي طول.",
     }
 }

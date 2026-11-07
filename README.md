@@ -2,7 +2,7 @@
 title: Egyptian Arabic TTS
 emoji: 🌎
 colorFrom: indigo
-colorTo: green
+colorTo: red
 sdk: gradio
 sdk_version: 5.29.0
 app_file: app.py

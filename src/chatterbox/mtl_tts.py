@@ -7,7 +7,37 @@ import torch
 import perth
 import torch.nn.functional as F
 from safetensors.torch import load_file as load_safetensors
-from huggingface_hub import snapshot_download
+import time
+from huggingface_hub import snapshot_download, hf_hub_download
+
+
+def _robust_snapshot_download(repo_id: str, repo_type: str, allow_patterns: list, token=None, max_retries: int = 10) -> str:
+    """Download each file individually with retry/resume, then return the snapshot dir."""
+    for filename in allow_patterns:
+        for attempt in range(max_retries):
+            try:
+                hf_hub_download(
+                    repo_id=repo_id,
+                    filename=filename,
+                    repo_type=repo_type,
+                    token=token,
+                )
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    wait = min(5 * (attempt + 1), 60)
+                    print(f"  Retry {attempt + 1}/{max_retries} for {filename} in {wait}s: {e}")
+                    time.sleep(wait)
+                else:
+                    raise
+    # Return the snapshot dir (all files are now cached)
+    return snapshot_download(
+        repo_id=repo_id,
+        repo_type=repo_type,
+        allow_patterns=allow_patterns,
+        token=token,
+        local_files_only=True,
+    )
 
 from .models.t3 import T3
 from .models.t3.modules.t3_config import T3Config
@@ -148,7 +178,8 @@ class ChatterboxMultilingualTTS:
         self.tokenizer = tokenizer
         self.device = device
         self.conds = conds
-        self.watermarker = perth.PerthImplicitWatermarker()
+        _WM = perth.PerthImplicitWatermarker or perth.DummyWatermarker
+        self.watermarker = _WM()
 
     @classmethod
     def get_supported_languages(cls):
@@ -160,7 +191,7 @@ class ChatterboxMultilingualTTS:
         ckpt_dir = Path(ckpt_dir)
 
         ve = VoiceEncoder()
-        ve.load_state_dict(torch.load(ckpt_dir / "ve.pt", weights_only=True))
+        ve.load_state_dict(torch.load(ckpt_dir / "ve.pt", weights_only=True, map_location=device))
         ve.to(device).eval()
 
         t3 = T3(T3Config.multilingual())
@@ -171,7 +202,7 @@ class ChatterboxMultilingualTTS:
         t3.to(device).eval()
 
         s3gen = S3Gen()
-        s3gen.load_state_dict(torch.load(ckpt_dir / "s3gen.pt", weights_only=True))
+        s3gen.load_state_dict(torch.load(ckpt_dir / "s3gen.pt", weights_only=True, map_location=device))
         s3gen.to(device).eval()
 
         tokenizer = MTLTokenizer(str(ckpt_dir / "grapheme_mtl_merged_expanded_v1.json"))
@@ -184,19 +215,18 @@ class ChatterboxMultilingualTTS:
 
     @classmethod
     def from_pretrained(cls, device: torch.device) -> "ChatterboxMultilingualTTS":
+        # These files are from ResembleAI/chatterbox (base model)
+        _base_files = [
+            "ve.pt",
+            "s3gen.pt",
+            "grapheme_mtl_merged_expanded_v1.json",
+            "Cangjie5_TC.json",
+        ]
         ckpt_dir = Path(
-            snapshot_download(
+            _robust_snapshot_download(
                 repo_id=REPO_ID,
                 repo_type="model",
-                revision="main",
-                allow_patterns=[
-                    "ve.pt",
-                    "t3_mtl23ls_v2.safetensors",
-                    "s3gen.pt",
-                    "grapheme_mtl_merged_expanded_v1.json",
-                    "conds.pt",
-                    "Cangjie5_TC.json",
-                ],
+                allow_patterns=_base_files,
                 token=os.getenv("HF_TOKEN"),
             )
         )

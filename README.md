@@ -7,7 +7,7 @@ sdk: gradio
 sdk_version: 5.29.0
 app_file: app.py
 pinned: false
-short_description: Chatterbox Saudi Arabic TTS Demo
+short_description: Chatterbox multilanguil Arabic TTS Demo
 license: mit
 ---
 

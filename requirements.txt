@@ -1,0 +1,16 @@
+gradio
+numpy==1.26.0
+resampy==0.4.3
+librosa==0.10.0
+s3tokenizer
+transformers==4.46.3
+diffusers==0.29.0
+omegaconf==2.3.0
+resemble-perth==1.0.1
+silero-vad==5.1.2
+conformer==0.3.2
+safetensors
+
+# Optional language-specific dependencies
+# Uncomment the ones you need for specific languages:
+# dicta-onnx>=0.1.0     # For Hebrew diacritization

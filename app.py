@@ -5,8 +5,11 @@ import re
 import wave
 import json
 import base64
+import threading
 import numpy as np
 import torch
+import librosa
+from scipy.signal import lfilter
 from pathlib import Path
 import os
 import tempfile
@@ -40,22 +43,20 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Running on device: {DEVICE}")
 
 MODEL = None
+_MODEL_LOAD_ERROR = None
+_MODEL_LOCK = threading.Lock()
 _APP_DIR = Path(__file__).parent
-
-LANGUAGE_CONFIG = {
-    "ar": {
-        "audio": str(_APP_DIR / "female_voice.wav"),
-        "text": "انا سبت الشغل و راجع دلوقتي علي طول.",
-    }
-}
+DEFAULT_VOICE_PATH = _APP_DIR / "female_voice.wav"
+MAX_UPLOAD_BYTES = 25 * 1024 * 1024  # 25 MB cap on uploaded reference audio
 
 def default_audio_path():
-    p = LANGUAGE_CONFIG.get("ar", {}).get("audio")
-    return p if p and Path(p).exists() else None
+    return str(DEFAULT_VOICE_PATH) if DEFAULT_VOICE_PATH.exists() else None
 
 def get_or_load_model():
-    global MODEL
+    global MODEL, _MODEL_LOAD_ERROR
     if MODEL is None:
+        if _MODEL_LOAD_ERROR is not None:
+            raise RuntimeError(f"Model unavailable: {_MODEL_LOAD_ERROR}")
         print("Loading model from checkpoint/ ...")
         MODEL = ChatterboxMultilingualTTS.from_local(_APP_DIR / "checkpoint", DEVICE)
         print("Model loaded successfully!")
@@ -64,7 +65,8 @@ def get_or_load_model():
 try:
     get_or_load_model()
 except Exception as e:
-    print(f"CRITICAL: Failed to load model. Error: {e}")
+    _MODEL_LOAD_ERROR = f"{type(e).__name__}: {e}"
+    print(f"CRITICAL: Failed to load model. Error: {_MODEL_LOAD_ERROR}")
 
 def set_seed(seed: int):
     torch.manual_seed(seed)
@@ -85,25 +87,15 @@ def numpy_to_wav_bytes(sr: int, arr: np.ndarray) -> bytes:
     return buf.getvalue()
 
 # =============================
-# WAV reader (used by gender + ref preprocessing)
+# Audio reader (WAV, MP3, M4A, OGG, etc.)
 # =============================
-def read_wav_as_float(path: str) -> tuple:
-    """Read a WAV file and return (sample_rate, float32 mono array)."""
-    with wave.open(path, "rb") as wf:
-        sr = wf.getframerate()
-        n_channels = wf.getnchannels()
-        sampwidth = wf.getsampwidth()
-        frames = wf.readframes(wf.getnframes())
-
-    dtype_map = {1: np.int8, 2: np.int16, 4: np.int32}
-    dtype = dtype_map.get(sampwidth, np.int16)
-    data = np.frombuffer(frames, dtype=dtype).astype(np.float32)
-    data /= float(np.iinfo(dtype).max)
-
-    if n_channels > 1:
-        data = data.reshape(-1, n_channels).mean(axis=1)
-
-    return sr, data
+def load_audio_float(path: str, max_duration: float = 30.0) -> tuple:
+    """
+    Load any supported audio file as (sample_rate, float32 mono array),
+    capped at max_duration seconds to bound RAM/CPU usage.
+    """
+    data, sr = librosa.load(path, sr=None, mono=True, duration=max_duration)
+    return int(sr), data.astype(np.float32, copy=False)
 
 # =============================
 # Reference Audio Preprocessing
@@ -111,26 +103,19 @@ def read_wav_as_float(path: str) -> tuple:
 def preprocess_reference_audio(path: str, target_sr: int = 24000, target_duration: float = 8.0) -> str:
     """
     Prepare reference audio for best voice cloning quality:
-    1. Load + resample to model SR (24 kHz)
+    1. Load (capped to 30 s) + anti-aliased resample to model SR (24 kHz)
     2. Find the most voiced segment — skips silence-heavy regions
     3. Trim to 8 s (model clips at 10 s anyway; cleaner is better)
     4. Normalize to -3 dBFS
     Returns path to a preprocessed temp WAV (caller must delete it).
-
-    WHY THIS MATTERS:
-    - Noisy/silent reference audio produces muffled or robotic cloning
-    - A wrong 10s window (e.g. 8s silence + 2s speech) loses ~80% of voice info
-    - Wrong SR causes the model to see aliased frequency content
     """
     try:
-        sr, data = read_wav_as_float(path)
+        sr, data = load_audio_float(path, max_duration=30.0)
+        if len(data) == 0:
+            return path
 
-        # Resample to target_sr using linear interpolation (no scipy needed)
         if sr != target_sr:
-            n_out = int(len(data) * target_sr / sr)
-            x_old = np.linspace(0, 1, len(data))
-            x_new = np.linspace(0, 1, n_out)
-            data = np.interp(x_new, x_old, data).astype(np.float32)
+            data = librosa.resample(data, orig_sr=sr, target_sr=target_sr).astype(np.float32, copy=False)
             sr = target_sr
 
         target_samples = int(target_duration * sr)
@@ -217,11 +202,11 @@ def split_into_chunks(text: str, max_chars: int = 120) -> list:
             if buf:
                 refined.append(buf)
 
-    # Merge very short trailing fragments into the previous chunk
+    # Merge very short trailing fragments into the previous chunk (preserving sentence punctuation)
     merged = []
     for chunk in refined:
-        if merged and len(chunk) < 20 and len(merged[-1]) + len(chunk) < max_chars:
-            merged[-1] = merged[-1].rstrip(".!?؟") + " " + chunk
+        if merged and len(chunk) < 20 and len(merged[-1]) + len(chunk) + 1 <= max_chars:
+            merged[-1] = merged[-1] + " " + chunk
         else:
             merged.append(chunk)
 
@@ -296,17 +281,15 @@ def normalize_volume(audio: np.ndarray, target_db: float = -3.0) -> np.ndarray:
 
 def highpass_filter(audio: np.ndarray, sr: int, cutoff_hz: float = 80.0) -> np.ndarray:
     """
-    1st-order IIR high-pass filter. Removes sub-80 Hz DC/rumble that makes
-    TTS output sound muddy. Pure numpy — no scipy needed.
+    1st-order IIR high-pass filter via scipy.signal.lfilter.
+    Removes sub-80 Hz DC/rumble that makes TTS output sound muddy.
     """
+    if len(audio) < 2:
+        return audio
     rc    = 1.0 / (2.0 * np.pi * cutoff_hz)
     dt    = 1.0 / sr
     alpha = rc / (rc + dt)
-    out   = np.empty_like(audio)
-    out[0] = audio[0]
-    for i in range(1, len(audio)):
-        out[i] = alpha * (out[i - 1] + audio[i] - audio[i - 1])
-    return out
+    return lfilter([alpha, -alpha], [1.0, -alpha], audio).astype(np.float32, copy=False)
 
 
 def postprocess_audio(audio: np.ndarray, sr: int) -> np.ndarray:
@@ -326,7 +309,7 @@ def detect_voice_gender(audio_path: str) -> str:
     Female F0: ~160-300 Hz  |  Male F0: ~80-160 Hz
     """
     try:
-        sr, data = read_wav_as_float(audio_path)
+        sr, data = load_audio_float(audio_path, max_duration=10.0)
         data = data[: sr * 5]
         rms = np.sqrt(np.mean(data ** 2))
         if rms < 1e-4:
@@ -449,13 +432,27 @@ def score_audio_quality(sr: int, audio: np.ndarray, text_len: int) -> dict:
 # =============================
 # Shared: save uploaded audio
 # =============================
-def _save_upload(audio: UploadFile) -> str:
-    """Save an UploadFile to a temp file. Returns the path."""
-    suffix = Path(audio.filename).suffix or ".wav"
+def _save_upload(audio: UploadFile, max_bytes: int | None = None) -> str:
+    """Save an UploadFile to a temp file, enforcing a size cap."""
+    limit = MAX_UPLOAD_BYTES if max_bytes is None else max_bytes
+    suffix = Path(audio.filename or "audio.wav").suffix or ".wav"
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-    shutil.copyfileobj(audio.file, tmp)
-    tmp.close()
-    return tmp.name
+    total = 0
+    try:
+        while True:
+            chunk = audio.file.read(65536)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > limit:
+                raise ValueError(f"Upload exceeds {max(1, limit // (1024 * 1024))} MB limit")
+            tmp.write(chunk)
+        tmp.close()
+        return tmp.name
+    except Exception:
+        tmp.close()
+        _cleanup(tmp.name)
+        raise
 
 def _resolve_audio_path(audio: UploadFile, default_fn) -> tuple:
     """
@@ -471,13 +468,13 @@ def _resolve_audio_path(audio: UploadFile, default_fn) -> tuple:
     else:
         raw_path = default_fn()
 
-    if raw_path and raw_path.lower().endswith(".wav"):
+    if raw_path:
         prep_tmp = preprocess_reference_audio(raw_path, target_sr=24000, target_duration=8.0)
         if prep_tmp == raw_path:
             prep_tmp = None   # failed gracefully, no extra file
         audio_path = prep_tmp if prep_tmp else raw_path
     else:
-        audio_path = raw_path
+        audio_path = None
 
     return raw_tmp, audio_path, prep_tmp
 
@@ -493,8 +490,7 @@ def _cleanup(*paths):
 def _generate_chunked(model, text: str, audio_path, gen_kwargs: dict) -> np.ndarray:
     """
     Split text into short chunks, generate each one, crossfade-concatenate.
-    Per-chunk generation consistently produces better quality than single-shot
-    on texts longer than ~80 chars.
+    Assumes caller already holds `_MODEL_LOCK`.
     """
     chunks = split_into_chunks(text, max_chars=120)
     print(f"  Generating {len(chunks)} chunk(s): {[c[:25] + '…' if len(c) > 25 else c for c in chunks]}")
@@ -504,11 +500,17 @@ def _generate_chunked(model, text: str, audio_path, gen_kwargs: dict) -> np.ndar
         kw = dict(gen_kwargs)
         if i == 0 and audio_path:
             kw["audio_prompt_path"] = audio_path
-        # For subsequent chunks, model already has conditionals loaded from chunk 0
         wav = model.generate(chunk, language_id="ar", **kw)
         audio_chunks.append(wav.squeeze(0).numpy())
 
     return crossfade_concat(audio_chunks, model.sr, fade_ms=25)
+
+def _error_json(msg: str, status_code: int = 400) -> Response:
+    return Response(
+        content=json.dumps({"error": msg}, ensure_ascii=False),
+        status_code=status_code,
+        media_type="application/json",
+    )
 
 # =============================
 # FastAPI
@@ -531,21 +533,15 @@ async def get_default_voice():
     return Response(status_code=404)
 
 @app.post("/api/detect-gender")
-async def api_detect_gender(audio: UploadFile = File(...)):
-    """Detect gender from an uploaded audio file."""
+def api_detect_gender(audio: UploadFile = File(...)):
+    """Detect gender from any supported uploaded audio file."""
     tmp_path = None
     try:
-        suffix = Path(audio.filename).suffix or ".wav"
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-        shutil.copyfileobj(audio.file, tmp)
-        tmp.close()
-        tmp_path = tmp.name
-
-        if suffix.lower() != ".wav":
-            return {"gender": "unknown"}
-
+        tmp_path = _save_upload(audio)
         gender = detect_voice_gender(tmp_path)
         return {"gender": gender}
+    except ValueError as e:
+        return _error_json(str(e), 400)
     except Exception as e:
         print(f"detect-gender error: {e}")
         return {"gender": "unknown"}
@@ -560,33 +556,23 @@ def api_generate(
     temperature: float = Form(0.8),
     seed: int = Form(0),
     cfg_weight: float = Form(0.5),
-    candidate_index: int = Form(0),
     repetition_penalty: float = Form(2.5),
     min_p: float = Form(0.02),
     audio: UploadFile = File(None),
 ):
-    """
-    Single generation with:
-    - Reference audio preprocessing (find best 8s voiced segment)
-    - Text chunking (per-sentence for better quality)
-    - High-pass filter + silence trim + volume normalization
-    - repetition_penalty=2.5 (reduces looping/stuttering artifacts)
-    - min_p=0.02 (more expressive sampling vs default 0.05)
-    """
+    """Single generation with preprocessed reference, chunking, and post-processing."""
     text = (text or "").strip()
     if not text:
-        return Response(content='{"error":"اكتب حاجة الأول"}', status_code=400, media_type="application/json")
+        return _error_json("اكتب حاجة الأول", 400)
     if len(text) > 300:
-        return Response(content='{"error":"النص طويل شوية، الحد الأقصى 300 حرف"}', status_code=400, media_type="application/json")
+        return _error_json("النص طويل شوية، الحد الأقصى 300 حرف", 400)
 
     raw_tmp = prep_tmp = None
     try:
-        raw_tmp, audio_path, prep_tmp = _resolve_audio_path(audio, default_audio_path)
         model = get_or_load_model()
+        raw_tmp, audio_path, prep_tmp = _resolve_audio_path(audio, default_audio_path)
 
-        actual_seed = (seed if seed else random.randint(1, 999999)) + candidate_index
-        set_seed(actual_seed)
-
+        actual_seed = seed if seed else random.randint(1, 999999)
         gen_kwargs = {
             "exaggeration": exaggeration,
             "temperature": temperature,
@@ -595,13 +581,20 @@ def api_generate(
             "min_p": min_p,
         }
 
-        wav_np = _generate_chunked(model, text[:300], audio_path, gen_kwargs)
+        with _MODEL_LOCK:
+            set_seed(actual_seed)
+            wav_np = _generate_chunked(model, text[:300], audio_path, gen_kwargs)
+
         wav_np = postprocess_audio(wav_np, model.sr)
         return Response(content=numpy_to_wav_bytes(model.sr, wav_np), media_type="audio/wav")
 
+    except ValueError as e:
+        return _error_json(str(e), 400)
+    except RuntimeError as e:
+        return _error_json(str(e), 503)
     except Exception as e:
         print(f"ERROR: {type(e).__name__}: {e}")
-        return Response(content='{"error":"حصلت مشكلة، جرّب تاني"}', status_code=500, media_type="application/json")
+        return _error_json("حصلت مشكلة، جرّب تاني", 500)
     finally:
         _cleanup(raw_tmp, prep_tmp)
 
@@ -618,77 +611,77 @@ def api_generate_best(
     min_p: float = Form(0.02),
     audio: UploadFile = File(None),
 ):
-    """
-    Generate N candidates with parameter jittering, score each, return ranked JSON.
-    Each candidate gets different exag/temp/cfg to explore the generation space.
-    All use improved: chunked generation + preprocessed reference + extra model params.
-    """
+    """Generate N candidates with parameter jittering, score each, return ranked JSON."""
     text = (text or "").strip()
     if not text:
-        return Response(content='{"error":"اكتب حاجة الأول"}', status_code=400, media_type="application/json")
+        return _error_json("اكتب حاجة الأول", 400)
     if len(text) > 300:
-        return Response(content='{"error":"النص طويل شوية"}', status_code=400, media_type="application/json")
+        return _error_json("النص طويل شوية", 400)
 
     count = min(max(count, 2), 7)
     raw_tmp = prep_tmp = None
     try:
-        raw_tmp, audio_path, prep_tmp = _resolve_audio_path(audio, default_audio_path)
         model = get_or_load_model()
-        base_seed  = seed if seed else random.randint(1, 999999)
+        raw_tmp, audio_path, prep_tmp = _resolve_audio_path(audio, default_audio_path)
+        base_seed    = seed if seed else random.randint(1, 999999)
         text_trimmed = text[:300]
         text_len     = len(text_trimmed)
 
-        # Jitter table: wider exploration than seed-only variation
-        # Columns: exag offset, temp offset, cfg offset
         jitter_offsets = [
-            {"exag":  0.00, "temp":  0.00, "cfg":  0.00},   # exact baseline
-            {"exag": -0.10, "temp": -0.08, "cfg": +0.10},   # calmer + tighter guidance
-            {"exag": +0.12, "temp": +0.06, "cfg": -0.08},   # warmer + freer
-            {"exag": -0.15, "temp": +0.10, "cfg": +0.05},   # low exag, more random
-            {"exag": +0.18, "temp": -0.06, "cfg": -0.10},   # expressive, low temp
-            {"exag": -0.05, "temp": +0.15, "cfg": +0.12},   # high temp + guided
-            {"exag": +0.08, "temp": -0.12, "cfg":  0.00},   # expressive, very stable
+            {"exag":  0.00, "temp":  0.00, "cfg":  0.00},
+            {"exag": -0.10, "temp": -0.08, "cfg": +0.10},
+            {"exag": +0.12, "temp": +0.06, "cfg": -0.08},
+            {"exag": -0.15, "temp": +0.10, "cfg": +0.05},
+            {"exag": +0.18, "temp": -0.06, "cfg": -0.10},
+            {"exag": -0.05, "temp": +0.15, "cfg": +0.12},
+            {"exag": +0.08, "temp": -0.12, "cfg":  0.00},
         ]
 
         print(f"Generating {count} candidates for: '{text_trimmed[:40]}…'")
 
         candidates = []
-        for i in range(count):
-            try:
-                set_seed(base_seed + i)
-                j = jitter_offsets[i] if i < len(jitter_offsets) else jitter_offsets[0]
+        with _MODEL_LOCK:
+            conds_ready = False
+            for i in range(count):
+                try:
+                    set_seed(base_seed + i)
+                    j = jitter_offsets[i] if i < len(jitter_offsets) else jitter_offsets[0]
 
-                gen_exag = max(0.1, min(2.0, exaggeration + j["exag"]))
-                gen_temp = max(0.05, min(5.0, temperature   + j["temp"]))
-                gen_cfg  = max(0.0,  min(1.0, cfg_weight   + j["cfg"]))
+                    gen_exag = max(0.1, min(2.0, exaggeration + j["exag"]))
+                    gen_temp = max(0.05, min(5.0, temperature   + j["temp"]))
+                    gen_cfg  = max(0.0,  min(1.0, cfg_weight   + j["cfg"]))
 
-                gen_kwargs = {
-                    "exaggeration": gen_exag,
-                    "temperature":  gen_temp,
-                    "cfg_weight":   gen_cfg,
-                    "repetition_penalty": repetition_penalty,
-                    "min_p": min_p,
-                }
+                    gen_kwargs = {
+                        "exaggeration": gen_exag,
+                        "temperature":  gen_temp,
+                        "cfg_weight":   gen_cfg,
+                        "repetition_penalty": repetition_penalty,
+                        "min_p": min_p,
+                    }
 
-                wav_np = _generate_chunked(model, text_trimmed, audio_path, gen_kwargs)
-                wav_np = postprocess_audio(wav_np, model.sr)
-                scores = score_audio_quality(model.sr, wav_np, text_len)
-                wav_b64 = base64.b64encode(numpy_to_wav_bytes(model.sr, wav_np)).decode()
+                    # Prepare speaker embeddings once, reuse across subsequent candidates
+                    prompt_for_call = audio_path if not conds_ready else None
+                    wav_np = _generate_chunked(model, text_trimmed, prompt_for_call, gen_kwargs)
+                    conds_ready = True
 
-                candidates.append({
-                    "index": i,
-                    "seed":  base_seed + i,
-                    "params": {"exag": round(gen_exag, 3), "temp": round(gen_temp, 3), "cfg": round(gen_cfg, 3)},
-                    "scores": scores,
-                    "total_score": scores["total"],
-                    "duration": round(len(wav_np) / model.sr, 2),
-                    "audio_b64": wav_b64,
-                })
-                print(f"  #{i}: score={scores['total']:.3f} exag={gen_exag:.2f} temp={gen_temp:.2f} cfg={gen_cfg:.2f}")
+                    wav_np = postprocess_audio(wav_np, model.sr)
+                    scores = score_audio_quality(model.sr, wav_np, text_len)
+                    wav_b64 = base64.b64encode(numpy_to_wav_bytes(model.sr, wav_np)).decode()
 
-            except Exception as e:
-                print(f"  #{i} failed: {e}")
-                candidates.append({"index": i, "seed": base_seed + i, "error": str(e), "total_score": 0})
+                    candidates.append({
+                        "index": i,
+                        "seed":  base_seed + i,
+                        "params": {"exag": round(gen_exag, 3), "temp": round(gen_temp, 3), "cfg": round(gen_cfg, 3)},
+                        "scores": scores,
+                        "total_score": scores["total"],
+                        "duration": round(len(wav_np) / model.sr, 2),
+                        "audio_b64": wav_b64,
+                    })
+                    print(f"  #{i}: score={scores['total']:.3f} exag={gen_exag:.2f} temp={gen_temp:.2f} cfg={gen_cfg:.2f}")
+
+                except Exception as e:
+                    print(f"  #{i} failed: {e}")
+                    candidates.append({"index": i, "seed": base_seed + i, "error": str(e), "total_score": 0})
 
         candidates.sort(key=lambda c: c.get("total_score", 0), reverse=True)
         for rank, c in enumerate(candidates):
@@ -700,9 +693,13 @@ def api_generate_best(
             media_type="application/json",
         )
 
+    except ValueError as e:
+        return _error_json(str(e), 400)
+    except RuntimeError as e:
+        return _error_json(str(e), 503)
     except Exception as e:
         print(f"ERROR in generate-best: {type(e).__name__}: {e}")
-        return Response(content='{"error":"حصلت مشكلة، جرّب تاني"}', status_code=500, media_type="application/json")
+        return _error_json("حصلت مشكلة، جرّب تاني", 500)
     finally:
         _cleanup(raw_tmp, prep_tmp)
 
@@ -712,11 +709,7 @@ def api_calibrate_voice(
     audio: UploadFile = File(None),
     gender: str = Form("unknown"),
 ):
-    """
-    Quick voice calibration: 6 probes across param space on a short phrase.
-    Returns best params for the uploaded voice. Much faster than Best-of-5 on
-    real text — uses a fixed Egyptian Arabic calibration sentence.
-    """
+    """Quick voice calibration: 6 probes across param space on a short phrase."""
     CALIBRATION_TEXT = "أهلاً وسهلاً، أنا سعيد إني أتكلم معاك."
 
     CALIBRATION_PROBES = [
@@ -735,36 +728,41 @@ def api_calibrate_voice(
 
     raw_tmp = prep_tmp = None
     try:
-        raw_tmp, audio_path, prep_tmp = _resolve_audio_path(audio, default_audio_path)
         model = get_or_load_model()
+        raw_tmp, audio_path, prep_tmp = _resolve_audio_path(audio, default_audio_path)
         results = []
         base_seed = random.randint(1, 999999)
 
-        for i, probe in enumerate(CALIBRATION_PROBES):
-            try:
-                set_seed(base_seed + i)
-                gen_kwargs = {
-                    "exaggeration": probe["exag"],
-                    "temperature":  probe["temp"],
-                    "cfg_weight":   probe["cfg"],
-                    "repetition_penalty": 2.5,
-                    "min_p": 0.02,
-                }
-                wav_np = _generate_chunked(model, CALIBRATION_TEXT, audio_path, gen_kwargs)
-                wav_np = postprocess_audio(wav_np, model.sr)
-                scores = score_audio_quality(model.sr, wav_np, len(CALIBRATION_TEXT))
-                results.append({
-                    "label":  probe["label"],
-                    "params": {"exag": probe["exag"], "temp": probe["temp"], "cfg": probe["cfg"]},
-                    "score":  scores["total"],
-                    "scores": scores,
-                })
-                print(f"  Calibration {probe['label']}: {scores['total']:.3f}")
-            except Exception as e:
-                print(f"  Calibration probe {i} failed: {e}")
+        with _MODEL_LOCK:
+            conds_ready = False
+            for i, probe in enumerate(CALIBRATION_PROBES):
+                try:
+                    set_seed(base_seed + i)
+                    gen_kwargs = {
+                        "exaggeration": probe["exag"],
+                        "temperature":  probe["temp"],
+                        "cfg_weight":   probe["cfg"],
+                        "repetition_penalty": 2.5,
+                        "min_p": 0.02,
+                    }
+                    prompt_for_call = audio_path if not conds_ready else None
+                    wav_np = _generate_chunked(model, CALIBRATION_TEXT, prompt_for_call, gen_kwargs)
+                    conds_ready = True
+
+                    wav_np = postprocess_audio(wav_np, model.sr)
+                    scores = score_audio_quality(model.sr, wav_np, len(CALIBRATION_TEXT))
+                    results.append({
+                        "label":  probe["label"],
+                        "params": {"exag": probe["exag"], "temp": probe["temp"], "cfg": probe["cfg"]},
+                        "score":  scores["total"],
+                        "scores": scores,
+                    })
+                    print(f"  Calibration {probe['label']}: {scores['total']:.3f}")
+                except Exception as e:
+                    print(f"  Calibration probe {i} failed: {e}")
 
         if not results:
-            return Response(content='{"error":"كل التجارب فشلت"}', status_code=500, media_type="application/json")
+            return _error_json("كل التجارب فشلت", 500)
 
         best = max(results, key=lambda r: r["score"])
         print(f"  Best: {best['label']} (score={best['score']:.3f})")
@@ -774,9 +772,13 @@ def api_calibrate_voice(
             media_type="application/json",
         )
 
+    except ValueError as e:
+        return _error_json(str(e), 400)
+    except RuntimeError as e:
+        return _error_json(str(e), 503)
     except Exception as e:
         print(f"ERROR in calibrate-voice: {type(e).__name__}: {e}")
-        return Response(content='{"error":"حصلت مشكلة أثناء المعايرة"}', status_code=500, media_type="application/json")
+        return _error_json("حصلت مشكلة أثناء المعايرة", 500)
     finally:
         _cleanup(raw_tmp, prep_tmp)
 

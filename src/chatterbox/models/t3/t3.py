@@ -330,23 +330,6 @@ class T3(nn.Module):
             self.patched_model = patched_model
             self.compiled = True
 
-        # # Run normal generate method, which calls our custom extended methods
-        # return self.patched_model.generate(
-        #     inputs=initial_speech_tokens,
-        #     decoder_cond=embeds,
-        #     bos_token_id=self.hp.start_speech_token,
-        #     eos_token_id=(self.hp.stop_speech_token if stop_on_eos else -1),
-        #     pad_token_id=self.hp.stop_speech_token,
-        #     max_new_tokens=max_new_tokens or self.hp.max_speech_tokens,
-        #     num_return_sequences=num_return_sequences,
-        #     temperature=temperature,
-        #     min_p=min_p,
-        #     length_penalty=length_penalty,
-        #     repetition_penalty=repetition_penalty,
-        #     do_sample=do_sample,
-        #     # cache_implementation=None if not self.compiled else "static",
-        # )
-
         device = embeds.device
 
         bos_token = torch.tensor(
@@ -368,7 +351,6 @@ class T3(nn.Module):
         # Instantiate the logits processors.
         top_p_warper = TopPLogitsWarper(top_p=top_p)
         min_p_warper = MinPLogitsWarper(min_p=min_p)
-        top_p_warper = TopPLogitsWarper(top_p=top_p)
         repetition_penalty_processor = RepetitionPenaltyLogitsProcessor(
             penalty=float(repetition_penalty)
         )

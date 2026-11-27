@@ -96,7 +96,7 @@ Open **إعدادات متقدمة — Advanced** to set a fixed `Seed` (`0` = r
 For every generation request in `app.py`, audio flows through:
 
 1. **Reference Preprocessing (`preprocess_reference_audio`)**
-   - For `.wav` references: reads audio, linearly resamples to **24 kHz**, scans with a 25 ms sliding window to locate the **highest-energy 8-second voiced segment**, and peak-normalizes to **-3 dBFS**. (Chatterbox clips encoder conditioning to 6 s and decoder conditioning to 10 s, so feeding a clean 8 s voiced window avoids silent/noisy segments.)
+   - Reads uploaded audio (capped to 30 s via `librosa.load`), resamples to **24 kHz** with `librosa.resample`, scans with a 25 ms sliding window to locate the **highest-energy 8-second voiced segment**, and peak-normalizes to **-3 dBFS**. (Chatterbox clips encoder conditioning to 6 s and decoder conditioning to 10 s, so feeding a clean 8 s voiced window avoids silent/noisy segments.)
 2. **Text Chunking (`split_into_chunks`)**
    - Splits input on sentence endings (`. ! ? ؟`) and secondary Arabic commas (`،`) so each chunk stays at **≤ 120 characters** (merging tiny trailing fragments `< 20` chars). Short chunks prevent pacing drift and end-of-utterance artifacts.
 3. **Model Inference (`_generate_chunked` → `ChatterboxMultilingualTTS.generate`)**
@@ -123,7 +123,7 @@ For every generation request in `app.py`, audio flows through:
 - `GET /api/default-voice` — Returns `female_voice.wav`.
 - `POST /api/detect-gender` — Form field: `audio` (file). Returns `{"gender": "female" | "male" | "unknown"}`.
 - `POST /api/calibrate-voice` — Form fields: `audio` (optional file), `gender` (`"female" | "male" | "unknown"`). Returns `{"best": {...}, "all": [...], "gender": ...}`.
-- `POST /api/generate` — Form fields: `text`, `exaggeration` (0.5), `temperature` (0.8), `seed` (0), `cfg_weight` (0.5), `candidate_index` (0), `repetition_penalty` (2.5), `min_p` (0.02), `audio` (optional file). Returns `audio/wav`.
+- `POST /api/generate` — Form fields: `text`, `exaggeration` (0.5), `temperature` (0.8), `seed` (0), `cfg_weight` (0.5), `repetition_penalty` (2.5), `min_p` (0.02), `audio` (optional file, max 25 MB). Returns `audio/wav`.
 - `POST /api/generate-best` — Same form fields plus `count` (clamped `2–7`, default `5`). Returns JSON with ranked `candidates` (`index`, `rank`, `recommended`, `total_score`, `scores`, `params`, `duration`, `audio_b64`).
 
 ---
@@ -132,7 +132,7 @@ For every generation request in `app.py`, audio flows through:
 
 - **Clean Egyptian reference clip**: Use 6–12 seconds of dry, single-speaker Egyptian speech with no background music, reverb, or long pauses.
 - **Natural Egyptian spelling**: Write colloquial words consistently (e.g., `دلوقتي`, `إزاي`, `علشان`, `أوي`) and use punctuation (`.` / `،` / `؟`) to guide pauses cleanly.
-- **Tune per speaker**: Run **Auto-tune** once after uploading a new speaker, then use **Best-of-3** or **Best-of-5** for important lines. Male voices usually sound cleaner with slightly lower `exaggeration` (`0.25–0.45`) and higher `cfg_weight` (`0.45–0.60`).
+- **Tune per speaker**: Run **Auto-tune** once after uploading or recording a new speaker, then use **Best-of-3** or **Best-of-5** for important lines. Male voices usually sound cleaner with slightly lower `exaggeration` (`0.25–0.45`) and higher `cfg_weight` (`0.45–0.60`).
 
 ---
 
@@ -146,5 +146,5 @@ This repository is an **inference and web-app codebase**—there are no training
 
 - **`Missing dependencies. Install with: pip install fastapi uvicorn python-multipart`**: Run `pip install -r requirements.txt` inside your activated `.venv`.
 - **`CUDA is False` / slow generation**: Ensure you installed a CUDA-enabled PyTorch build matching your NVIDIA driver (`python "test cuda.py"`).
-- **Non-WAV reference audio skipped by gender detection / preprocessing**: Both `detect_voice_gender()` and `preprocess_reference_audio()` use Python's `wave` module and specifically handle `.wav` files; convert `.mp3`/`.m4a`/browser `.webm` recordings to `.wav` for best preprocessing results.
+- **Large or exotic audio uploads**: Uploads are capped at 25 MB and decoded via `librosa.load` (first 30 s). Browser mic recordings are encoded directly to 16-bit PCM `.wav` in the browser; compressed `.mp3`/`.m4a` uploads require system decoder support (`soundfile`/`audioread`).
 - **Model failed to load**: Verify all required files exist in `checkpoint/` and are complete (~3 GB total). Note `HF_HUB_OFFLINE=1` prevents accidental network downloads; remove or override it if intentionally downloading missing base files via `ChatterboxMultilingualTTS.from_pretrained()`.

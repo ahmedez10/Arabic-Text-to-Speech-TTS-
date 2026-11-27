@@ -1,4 +1,7 @@
 .vscode
+.venv/
+venv/
+.env
 
 # Pylance
 pyrightconfig.json

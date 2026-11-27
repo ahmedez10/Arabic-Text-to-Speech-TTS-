@@ -1,0 +1,273 @@
+Role and goal
+You are a senior front-end designer-engineer who builds polished, accessible, right-to-left interfaces. Redesign the single-page web app IspeakMasri, a text-to-speech tool that speaks Egyptian Arabic. Users type up to 300 characters, pick or upload a reference voice, adjust two parameters (Exaggeration and CFG / Pace) and get a WAV back. It runs on Chatterbox with an Egyptian checkpoint from ResembleAI.
+Stack: [YOUR STACK]. Backend: [BACKEND].
+Goal: keep every behavior, and change the experience so it feels Egyptian, is Arabic-first with English as a small secondary line, and moves with purpose. Do not change the model call, the API, or the 300-character limit.
+What stays: the dark theme, the pink primary action, the light-mode toggle, and the footer credit.
+What is wrong today:
+• Every label is English only.
+• The Arabic text uses a system fallback font.
+• The text area fills half the screen for one sentence and shows a stray resize handle.
+• The voice picker shows only a filename.
+• The sliders have no explanation.
+• The player has no current time, no speed control and no history.
+• Gray labels and the footer are low contrast.
+Design system
+Define these as CSS custom properties on :root, and redefine them under [data-theme="light"]. Both themes must pass 4.5:1 contrast for text.
+Token
+Dark
+Light
+Use
+--bg
+#14110F
+#FAF6F1
+Page background
+--surface
+#1D1816
+#FFFFFF
+Cards
+--surface-2
+#2A2320
+#F3ECE5
+Chips, hover fills
+--line
+#342C28
+#E4DACF
+1px borders
+--text
+#F4EDE7
+#231B17
+Body and headings
+--muted
+#B0A59D
+#6B5F57
+Secondary labels
+--dim
+#8D827A
+#6B5F57
+Placeholder, upcoming words
+--pink
+#EE8DB1
+#B83F6D
+Primary action (text on it: #2A1119 dark, #FFFFFF light)
+--nile
+#4FC9BD
+#0E7C74
+Progress, active state, focus ring, success
+--ochre
+#E6A95A
+#9A5B00
+Lattice accent, near-limit warning
+--danger
+#F2766B
+#B3261E
+Over limit, errors, recording
+Type. Four families, each with one job:
+• Cairo (400, 600, 700, 800): Arabic UI text and headings.
+• Inter (400, 500, 600): Latin text, numbers, the small English lines.
+• Noto Naskh Arabic (500, 600): the text the user types and the playback line. It reads like real Arabic writing.
+• Reem Kufi (600): the Arabic wordmark only.
+Sizes: hero 52/1.25, card title 19/700, body 16, input text 34/1.9, playback line 30/1.7, English secondary 12 to 14. Arabic needs generous line height. Never add letter-spacing to Arabic. Letter-spacing is only for the small uppercase English labels.
+Shape and spacing. Card radius 28, inner fields 20, segmented controls 16, pills 999. Spacing steps 4, 8, 12, 16, 24, 28. Page max width 1180 with a 32 px gutter (16 on phones). Every tap target is at least 44 px. Borders are 1 px --line; elevation comes from color steps, not heavy shadows.
+Egyptian cue, without clipart. A faint mashrabiya-style lattice sits behind the header. Build it as an SVG pattern with a 72 px tile: two 36 px squares that share the same center point, (36, 36), with one rotated 45 degrees around that point to form the eight-point star, plus a small circle at that same center. Stroke the squares in --nile at 13% opacity and the circle in --ochre at 18%. Mask it so it fades out over the first 460 px of the page. No pyramids, pharaohs or hieroglyphs.
+Layout and components
+The root is <html lang="ar" dir="rtl">. Below the hero, desktop is two columns: a wide column (input card, then player card) and a 340 px side column (voice card, then style card). Under 900 px everything stacks in this order: hero, input, generate, player, voice, style, history.
+1.  Header. A 48 px pink logo tile with a waveform glyph. Next to it, "IspeakMasri" in Inter 22/600 over the Arabic wordmark "أنا بتكلم مصري" in Reem Kufi 16, colored --nile. At the other end: an AR / EN segmented switch and a light/dark button, both labeled in two languages.
+2.  Hero. H1 "اكتب… وإحنا نقولها" at 52/800, with the English line "Type it. We'll say it — in real Egyptian Arabic." underneath in --muted.
+3.  Input card. A title row with the Arabic label, the small uppercase English label and the counter ("36 / 300", tabular numbers). Then the text area: dir="auto", lang="ar", minimum height 168, grows with its content up to about 8 lines and then scrolls, no resize handle, Naskh 34/1.9, Arabic placeholder. Under it, a 4 px progress bar: --nile, --ochre from 80%, --danger at 100%. Then two toggles (diacritics, Franco to Arabic), a clear button, a wrapping row of four example chips (all four visible at 1280 px without scrolling), and the Generate button: full width, 64 px tall, pink, with a "Ctrl + Enter" hint under it, set at 13 px in --muted.
+4.  Player card. A status line with a dot; a speed control (0.75×, 1×, 1.25×); WAV and MP3 download buttons; the karaoke line (the spoken text in Naskh 30/1.7); a 64 px play button; and a scrubbable waveform of 80 bars, 72 px high, with current and total time under it. Only the waveform and the times are a left-to-right island, because audio time runs left to right. Put dir="ltr" on the waveform wrapper itself, with the base bars, the teal bars and the playhead all inside it, and put the time labels in the same column directly under the bars, never in the row with the buttons. The karaoke line is not part of that island: it keeps dir="rtl" with text-align start, so its first word sits at the right edge of the card.
+5.  Voice card. A reference-voice tile (icon, file name, a short label, a preview button). Then "upload" and "record" buttons, a drag-and-drop hint, and three built-in voice pills so a first-time user does not need a file.
+6.  Style card. Three presets as a segmented control. "Exaggeration" becomes "شدة الإحساس" with "calm" and "dramatic" at the ends; "CFG / Pace" becomes "الإيقاع" with "slower" and "faster" at the ends. Use native range inputs with an accent-color of --nile, and show the value in --nile beside each label. "Advanced settings" is a <details> with a chevron.
+7.  History. The last five takes of this session, newest first. Each row has a play button, the text on one line with an ellipsis, the duration and a download button. The current take carries an "الحالي" tag.
+8.  Footer. Keep "Powered by Chatterbox · Egyptian Checkpoint · ResembleAI" at 13 px with at least 4.5:1 contrast. It sits at the very end of the page with 56 px of space below it, so it is always reachable by scrolling.
+Arabic copy and microcopy
+Write all status and error messages in warm, short Egyptian colloquial, not formal Modern Standard Arabic. Arabic is the main line; English is the small secondary line. Keep Western digits (36 / 300) so the counter matches the rest of the UI. Copy every Arabic string from the table below exactly, character for character. Do not respell dialect words, do not turn them into Modern Standard Arabic, and do not rephrase them. In particular, the wordmark subtitle is "أنا بتكلم مصري", never "لأتكلم بالمصري".
+Element
+Arabic (primary)
+English (secondary)
+Wordmark subtitle
+أنا بتكلم مصري
+none
+Hero
+اكتب… وإحنا نقولها
+Type it. We'll say it — in real Egyptian Arabic.
+Input title
+قول بالمصري
+Say it in Egyptian
+Placeholder
+اكتب هنا بالمصري…
+none
+Diacritics toggle
+تشكيل تلقائي
+Diacritics
+Franco toggle
+فرانكو ← عربي
+Franco → Arabic
+Clear
+امسح
+Clear
+Examples label
+جرّب مثال
+Try one
+Example chips
+إزيك يا باشا، عامل إيه؟ / هنتقابل بكرة إن شاء الله / يلا بينا نشرب شاي / الجو حر أوي النهاردة
+none
+Generate
+ولّد الصوت
+Generate voice
+Generating
+ثانية واحدة… بنجهّز الصوت
+One moment
+Ready
+تمام، الصوت جاهز
+Ready
+Voice card
+الصوت / صوتك المرجعي
+Voice / Reference voice
+Upload, record
+ارفع ملف / سجّل صوتك
+Upload / Record
+Drop hint
+أو اسحب الملف وسيبه هنا
+none
+Built-in voices
+أو اختار صوت جاهز: صوت ست / صوت راجل / صوت هادي
+Built-in voices
+Style, presets
+الأسلوب: طبيعي / تعبيري / هادي
+Style
+Exaggeration
+شدة الإحساس (هادي ↔ درامي)
+Exaggeration
+CFG / Pace
+الإيقاع (أبطأ ↔ أسرع)
+CFG / Pace
+Advanced
+إعدادات متقدمة
+Advanced
+History
+آخر التوليدات / الحالي
+Recent takes / Current
+Empty input
+اكتب حاجة الأول
+Write something first
+Over the limit
+النص طويل شوية، الحد الأقصى 300 حرف
+Over the 300-character limit
+Generation failed
+حصلت مشكلة، جرّب تاني
+Something went wrong, try again
+Bad voice file
+الملف مش صوت، جرّب WAV أو MP3
+Not an audio file
+Mic blocked
+لازم تسمح للمايك عشان تسجّل
+Allow the microphone to record
+The preset names, voice names and slider end labels are placeholders. Rename them to match what your checkpoint actually does.
+Animation and motion
+Motion explains state (loading, ready, playing). It never decorates for its own sake. Animate only transform and opacity (plus filter for hover and clip-path for the playback fill). Nothing one-shot runs longer than 700 ms. Never slide horizontally, because that direction flips in RTL; use vertical rises.
+:root {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --t-press: 120ms;
+  --t-hover: 180ms;
+  --t-state: 240ms;
+  --t-enter: 600ms;
+}
+Moment
+What moves
+Timing
+Page load
+Header fades in. Hero line one, then line two, rise 24 px and fade in. The English line fades in. Cards rise 28 px and fade in, in reading order.
+600 ms each, ease-out, 80 to 90 ms stagger, all done within 1.2 s
+Background lattice
+Drifts diagonally by exactly one 72 px tile, so the loop is seamless.
+90 s linear, infinite
+Logo glyph
+Five bars act as an equalizer, scaling between 0.45 and 1 on Y.
+1.1 s alternate, infinite, 120 ms stagger per bar
+Buttons, chips, pills
+Hover: brightness +10% and a 1 px lift. Press: scale 0.97. Focus: a 2 px --nile ring with 3 px offset, shown instantly.
+180 ms hover, 120 ms press
+Example chip click
+The text types into the box one character at a time. The counter and progress bar follow.
+24 ms per character
+Counter bar
+Color crossfades from --nile to --ochre at 80% and --danger at 100%.
+240 ms
+Generate pressed
+The label crossfades to the generating message. A spinner ring rotates and a soft light sweep crosses the button. The status dot pulses. The waveform area shows 80 skeleton bars shimmering in a wave.
+Spinner 800 ms linear, sweep 1.4 s, pulse 1.2 s, shimmer 1.2 s with 20 ms stagger
+Result arrives
+Skeleton bars are replaced by real bars growing from the center line (scaleY 0 to 1), left to right. Status switches to ready. Playback starts automatically.
+450 ms per bar, 8 ms stagger, about 1.1 s in total
+Playback
+The teal fill and a thin playhead sweep across the waveform. The word being spoken turns --nile, gets a soft pill background and lifts 2 px. Spoken words go to full text color. Upcoming words stay --dim. The time counter ticks.
+Linear, synced to the audio; 200 ms color change per word
+Pause and resume
+Everything freezes in place. The play and pause icons crossfade.
+150 ms
+Seek (drag on the waveform)
+The playhead follows the pointer. The fill and the words snap to that position.
+No easing
+New take in history
+The new row slides down into the list and the others shift.
+300 ms ease-out
+Theme switch
+Background, surface and text colors crossfade.
+240 ms
+Language switch
+Swap the text instantly. Do not animate the layout flip.
+none
+Implementation rules
+1.  Use CSS transitions and keyframes. No animation library is needed. If the stack is React, a library is acceptable only for reordering the history list.
+2.  Drive the playback visuals from the real <audio> element. On timeupdate (or requestAnimationFrame while playing) set --progress (0 to 1) on the player. The fill is clip-path: inset(0 calc((1 - var(--progress)) * 100%) 0 0) over the teal copy of the bars.
+3.  Word highlighting: if the model returns word timestamps, use them. If not, give every word the same share of the duration. Do not weight by letter count: in Arabic, short vowels are not written and connected letters have no fixed length, so letter count drifts badly. If you refine it, weight each word as one base unit plus one unit per long-vowel letter (ا و ي), and check the result by ear on real output. The mockup uses equal time per word, which is this default.
+4.  Build the 80 waveform bars from the generated file's real peaks (AudioContext.decodeAudioData). The mockup's bar heights are decorative. Decoding can fail (an unsupported codec, a corrupt file, or an AudioContext that is blocked or suspended outside a user gesture), so create the AudioContext inside the Generate click handler and wrap the decode in try/catch. If it fails, draw the 80 bars at a fixed decorative height, log a console warning, show no error to the user, and never block playback.
+5.  Set will-change: transform on the waveform bars only during the reveal, then remove it.
+6.  The only infinite loops allowed are the spinner, the status pulse and the skeleton shimmer (all state indicators), plus two ambient ones: the lattice drift and the logo equalizer.
+7.  Cancel the typewriter the moment the user types, clicks Clear, or clicks another example chip. Always clear the running timer before starting a new one, so two timers never write into the box at once.
+8.  Under prefers-reduced-motion: reduce: turn off the lattice drift, the logo equalizer, the entrance rises, the bar growth and the shimmer, and make the typewriter instant. Keep the playback fill, playhead and word highlight, because they carry information, but drop the 2 px lift.
+States, accessibility, RTL and responsive rules
+States to design and build
+• Empty: Generate is disabled; the placeholder shows.
+• Typing: the counter and bar update live; the box grows with its content.
+• Near limit (240+) and over limit (300+): --ochre, then --danger; Generate is disabled over the limit and the Arabic limit message appears.
+• Generating: Generate is disabled with aria-busy="true"; the skeleton and status pulse run; the play, speed and download controls are dimmed.
+• Ready and playing: the status says ready; the karaoke line and waveform follow the audio.
+• Error: the Arabic error appears in a polite live region under the Generate button, with a retry. Never use a blocking alert.
+• Recording: a --danger dot pulses with a running timer; the record button becomes stop.
+Accessibility
+• Use real <button>, <input> and <label> elements. Toggles use aria-pressed. Icon-only buttons get an aria-label in Arabic and English.
+• The status line is aria-live="polite".
+• The waveform is role="slider" with aria-valuenow; the arrow keys move 5%, and Home and End jump to the ends.
+• Every control shows a visible :focus-visible ring. Ctrl+Enter generates.
+• Never rely on color alone: the current word also gets a pill background.
+• Text contrast is at least 4.5:1 in both themes.
+RTL
+• Use logical properties (margin-inline, padding-inline, inset-inline). Do not use left or right.
+• Wrap Latin fragments (file names, WAV, 0.5) in <bdi> or dir="ltr".
+• Mirror direction icons such as arrows and chevrons. The play triangle never mirrors.
+Responsive
+• Breakpoints are 900 px and 600 px.
+• Under 600 px: gutter 16, hero 36, input text 26, control rows stack, history rows hide the duration.
+• Under 600 px the Generate button sits in a sticky bottom container with z-index 10 and a solid --bg background, so cards never render over it or show through it. The container has env(safe-area-inset-bottom) padding.
+Deliverables and acceptance checklist
+Deliver:
+1.  The complete updated source files, ready to run.
+2.  A short list of what changed and why.
+3.  No new dependencies beyond fonts. If you think one is needed, ask first.
+Rules: do not touch the model or inference code. Keep every existing element id and hook that the backend or scripts use, and list them in a comment at the top of the file. Keep the light mode. Load fonts with preconnect and display=swap.
+Done means:
+[ ] The layout matches the mockup at 1280, 768 and 390 px wide.
+[ ] Every label has Arabic first and English second.
+[ ] Arabic renders in Naskh or Cairo with no fallback glyphs.
+[ ] Every control is reachable by keyboard with a visible focus ring.
+[ ] Text passes 4.5:1 contrast in dark and light.
+[ ] Generate, loading, reveal and autoplay work end to end with the real model, failures show the Arabic errors, and a failed waveform decode falls back to decorative bars without blocking playback.
+[ ] The word highlight stays in sync through pause, seek and replay.
+[ ] Typing a long text does not shift the layout, and clicking example chips quickly never garbles the text.
+[ ] The Arabic strings match the copy table character for character.
+[ ] The karaoke line starts at the right edge and the waveform fill grows from the left.
+[ ] The current and total time sit directly under the waveform.
+[ ] prefers-reduced-motion is verified.
+[ ] Mobile layout has the sticky Generate button.

@@ -136,12 +136,6 @@ For every generation request in `app.py`, audio flows through:
 
 ---
 
-## 7. Note on Fine-Tuning
-
-This repository is an **inference and web-app codebase**—there are no training scripts, dataset manifests, or trainer loops included. `T3.loss()` in `src/chatterbox/models/t3/t3.py` provides the text/speech cross-entropy loss primitives if you build or attach a compatible fine-tuning pipeline externally.
-
----
-
 ## 8. Troubleshooting
 
 - **`Missing dependencies. Install with: pip install fastapi uvicorn python-multipart`**: Run `pip install -r requirements.txt` inside your activated `.venv`.

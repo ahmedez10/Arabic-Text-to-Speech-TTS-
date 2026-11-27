@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IspeakMasri — أنا بتكلم مصري</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;500;600&family=Noto+Naskh+Arabic:wght@500;600&family=Reem+Kufi:wght@600&display=swap" rel="stylesheet">
+  <style>
+/* ============================================
+   Design Tokens
+   ============================================ */
+:root {
+  --bg: #14110F;
+  --surface: #1D1816;
+  --surface-2: #2A2320;
+  --line: #342C28;
+  --text: #F4EDE7;
+  --muted: #B0A59D;
+  --dim: #8D827A;
+  --pink: #EE8DB1;
+  --pink-text: #2A1119;
+  --nile: #4FC9BD;
+  --ochre: #E6A95A;
+  --danger: #F2766B;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --t-press: 120ms;
+  --t-hover: 180ms;
+  --t-state: 240ms;
+}
+[data-theme="light"] {
+  --bg: #FAF6F1;
+  --surface: #FFFFFF;
+  --surface-2: #F3ECE5;
+  --line: #E4DACF;
+  --text: #231B17;
+  --muted: #6B5F57;
+  --dim: #6B5F57;
+  --pink: #B83F6D;
+  --pink-text: #FFFFFF;
+  --nile: #0E7C74;
+  --ochre: #9A5B00;
+  --danger: #B3261E;
+}
+
+/* ============================================
+   Reset & Base
+   ============================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Cairo', 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, textarea { font-family: inherit; }
+
+/* ============================================
+   Mashrabiya Lattice
+   ============================================ */
+.lattice {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72'%3E%3Crect x='18' y='18' width='36' height='36' fill='none' stroke='rgba(79,201,189,0.13)' stroke-width='1'/%3E%3Crect x='18' y='18' width='36' height='36' fill='none' stroke='rgba(79,201,189,0.13)' stroke-width='1' transform='rotate(45 36 36)'/%3E%3Ccircle cx='36' cy='36' r='3' fill='none' stroke='rgba(230,169,90,0.18)' stroke-width='1'/%3E%3C/svg%3E") repeat;
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 460px);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 460px);
+  animation: lattice-drift 90s linear infinite;
+}
+[data-theme="light"] .lattice {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72'%3E%3Crect x='18' y='18' width='36' height='36' fill='none' stroke='rgba(14,124,116,0.12)' stroke-width='1'/%3E%3Crect x='18' y='18' width='36' height='36' fill='none' stroke='rgba(14,124,116,0.12)' stroke-width='1' transform='rotate(45 36 36)'/%3E%3Ccircle cx='36' cy='36' r='3' fill='none' stroke='rgba(154,91,0,0.15)' stroke-width='1'/%3E%3C/svg%3E");
+}
+@keyframes lattice-drift { to { background-position: 72px 72px; } }
+
+/* ============================================
+   Page Shell
+   ============================================ */
+.page { position: relative; z-index: 1; max-width: 1180px; margin: 0 auto; padding: 0 32px; }
+
+/* ============================================
+   Header
+   ============================================ */
+.header { display: flex; align-items: center; gap: 12px; padding: 20px 0 12px; }
+.logo-tile {
+  width: 48px; height: 48px; background: var(--pink); border-radius: 14px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.logo-bars { display: flex; gap: 3px; align-items: flex-end; height: 24px; }
+.logo-bars span {
+  display: block; width: 3px; background: var(--pink-text); border-radius: 2px;
+  transform-origin: bottom; animation: eq 1.1s ease-in-out alternate infinite;
+}
+.logo-bars span:nth-child(1){height:10px;animation-delay:0s}
+.logo-bars span:nth-child(2){height:18px;animation-delay:.12s}
+.logo-bars span:nth-child(3){height:24px;animation-delay:.24s}
+.logo-bars span:nth-child(4){height:14px;animation-delay:.36s}
+.logo-bars span:nth-child(5){height:20px;animation-delay:.48s}
+@keyframes eq{0%{transform:scaleY(.45)}100%{transform:scaleY(1)}}
+.brand { display: flex; flex-direction: column; line-height: 1.15; }
+.brand-en { font-family:'Inter',sans-serif; font-size:22px; font-weight:600; color:var(--text); direction:ltr; text-align:start; }
+.brand-ar { font-family:'Reem Kufi',sans-serif; font-size:15px; font-weight:600; color:var(--nile); }
+.theme-btn {
+  margin-inline-start: auto; display: inline-flex; align-items: center; gap: 8px;
+  min-height: 44px; padding: 0 16px; border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--line);
+  font-family: 'Cairo', 'Inter', sans-serif; font-size: 13px; font-weight: 600; color: var(--text);
+  transition: filter var(--t-hover), transform var(--t-press);
+}
+.theme-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.theme-btn:active { transform: scale(0.97); }
+.theme-btn svg { width: 16px; height: 16px; fill: var(--nile); flex-shrink: 0; }
+
+/* ============================================
+   Hero
+   ============================================ */
+.hero { text-align: right; padding: 36px 0 28px; }
+.hero h1 { font-family:'Cairo',sans-serif; font-size:52px; font-weight:800; line-height:1.25; margin-bottom:10px; }
+.hero-en { font-family:'Inter',sans-serif; font-size:14px; color:var(--muted); direction:ltr; text-align:right; }
+
+/* ============================================
+   Grid
+   ============================================ */
+.grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
+
+/* ============================================
+   Card
+   ============================================ */
+.card { background:var(--surface); border:1px solid var(--line); border-radius:28px; padding:24px; margin-bottom:20px; }
+.card-title { display:flex; align-items:baseline; gap:8px; margin-bottom:16px; }
+.card-title .ar { font-family:'Cairo',sans-serif; font-size:19px; font-weight:700; }
+.card-title .en { font-family:'Inter',sans-serif; font-size:12px; font-weight:500; color:var(--muted); text-transform:uppercase; letter-spacing:1px; direction:ltr; }
+.card-title .counter { margin-inline-start:auto; font-family:'Inter',sans-serif; font-size:13px; font-weight:500; color:var(--muted); direction:ltr; font-variant-numeric:tabular-nums; }
+
+/* ============================================
+   Textarea
+   ============================================ */
+.text-input {
+  width:100%; min-height:140px; max-height:320px; padding:16px 20px;
+  background:var(--surface-2); border:1px solid var(--line); border-radius:20px;
+  color:var(--text); font-family:'Noto Naskh Arabic','Cairo',sans-serif;
+  font-size:28px; line-height:1.8; resize:none; direction:rtl; outline:none;
+  transition:border-color var(--t-state); display:block;
+}
+.text-input::placeholder { color:var(--dim); font-family:'Cairo',sans-serif; font-size:20px; }
+.text-input:focus { border-color:var(--nile); box-shadow:0 0 0 2px rgba(79,201,189,0.25); }
+
+.progress-bar { height:4px; border-radius:2px; background:var(--line); margin-top:8px; overflow:hidden; }
+.progress-fill { height:100%; border-radius:2px; background:var(--nile); width:0%; transition:width 120ms, background-color var(--t-state); }
+.progress-fill.warn { background:var(--ochre); }
+.progress-fill.danger { background:var(--danger); }
+
+/* ============================================
+   Chips & Buttons
+   ============================================ */
+.chips-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; align-items:center; }
+.chips-label { font-family:'Inter',sans-serif; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; direction:ltr; white-space:nowrap; }
+.chip {
+  display:inline-flex; align-items:center; padding:6px 16px;
+  background:var(--surface-2); border:1px solid var(--line); border-radius:999px;
+  font-family:'Cairo',sans-serif; font-size:14px; font-weight:600;
+  transition:filter var(--t-hover),transform var(--t-press); min-height:36px;
+}
+.chip:hover { filter:brightness(1.15); transform:translateY(-1px); }
+.chip:active { transform:scale(0.97); }
+
+.btn-row { display:flex; gap:8px; margin-top:12px; }
+.btn-secondary {
+  flex:1; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  padding:10px 16px; background:var(--surface-2); border:1px solid var(--line);
+  border-radius:16px; font-family:'Cairo',sans-serif; font-size:14px; font-weight:600;
+  min-height:44px; transition:filter var(--t-hover),transform var(--t-press);
+}
+.btn-secondary:hover { filter:brightness(1.15); transform:translateY(-1px); }
+.btn-secondary:active { transform:scale(0.97); }
+
+/* Generate buttons row */
+.gen-row { display:flex; gap:10px; margin-top:16px; }
+.btn-generate {
+  flex:1; display:flex; align-items:center; justify-content:center; gap:10px;
+  padding:0 24px; min-height:60px; background:var(--pink); color:var(--pink-text);
+  border-radius:20px; font-family:'Cairo','Inter',sans-serif; font-size:20px; font-weight:700;
+  transition:filter var(--t-hover),transform var(--t-press);
+}
+.btn-generate:hover { filter:brightness(1.1); transform:translateY(-1px); }
+.btn-generate:active { transform:scale(0.97); }
+.btn-generate:disabled { opacity:0.5; cursor:not-allowed; transform:none!important; filter:none!important; }
+.btn-generate .spinner { display:none; width:22px; height:22px; border:3px solid var(--pink-text); border-top-color:transparent; border-radius:50%; animation:spin .8s linear infinite; }
+.btn-generate.loading .spinner { display:block; }
+.btn-generate.loading .btn-label { display:none; }
+.btn-generate.loading .btn-loading-label { display:inline; }
+.btn-generate .btn-loading-label { display:none; }
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* Best of N toggle */
+.btn-bestof {
+  display:flex; align-items:center; justify-content:center; gap:6px;
+  padding:0 20px; min-height:60px; background:var(--surface-2); border:1px solid var(--line);
+  border-radius:20px; font-family:'Cairo',sans-serif; font-size:15px; font-weight:700;
+  transition:all var(--t-hover); white-space:nowrap;
+}
+.btn-bestof:hover { filter:brightness(1.15); transform:translateY(-1px); }
+.btn-bestof.active { border-color:var(--nile); color:var(--nile); background:rgba(79,201,189,0.08); }
+
+.count-opt {
+  min-width:34px; height:30px; border-radius:8px; padding:0 8px;
+  font-family:'Inter',sans-serif; font-size:13px; font-weight:600;
+  background:var(--surface-2); border:1px solid var(--line); color:var(--muted);
+  transition:all var(--t-hover);
+}
+.count-opt:hover { color:var(--text); border-color:var(--dim); }
+.count-opt.active { background:rgba(79,201,189,0.12); border-color:var(--nile); color:var(--nile); }
+
+.shortcut-hint { text-align:center; font-family:'Inter',sans-serif; font-size:13px; color:var(--dim); margin-top:6px; }
+.error-msg { display:none; padding:10px 16px; margin-top:10px; background:rgba(242,118,107,0.1); border:1px solid rgba(242,118,107,0.25); border-radius:14px; font-size:14px; color:var(--danger); text-align:center; }
+.error-msg.visible { display:block; }
+
+/* ============================================
+   Candidates Panel (Best of 3)
+   ============================================ */
+.candidates { display:none; margin-top:16px; }
+.candidates.visible { display:block; }
+.cand-list { display:flex; flex-direction:column; gap:10px; }
+.cand-item {
+  display:flex; align-items:center; gap:12px; padding:14px 16px;
+  background:var(--surface-2); border:1px solid var(--line); border-radius:20px;
+  transition:border-color var(--t-state);
+}
+.cand-item.selected { border-color:var(--nile); }
+.cand-item.generating { opacity:0.5; }
+.cand-num {
+  width:28px; height:28px; border-radius:50%; background:var(--line);
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Inter',sans-serif; font-size:13px; font-weight:600; flex-shrink:0;
+}
+.cand-item.selected .cand-num { background:var(--nile); color:var(--bg); }
+.cand-play {
+  width:36px; height:36px; border-radius:50%; background:rgba(79,201,189,0.12);
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  transition:background var(--t-hover);
+}
+.cand-play:hover { background:rgba(79,201,189,0.22); }
+.cand-play svg { width:14px; height:14px; fill:var(--nile); }
+.cand-mini-bars { flex:1; display:flex; align-items:center; gap:1px; height:32px; min-width:0; }
+.cand-mini-bars .bar { flex:1; background:var(--line); border-radius:1px; min-height:3px; }
+.cand-mini-bars .bar.teal { background:var(--nile); }
+.cand-dur { font-family:'Inter',sans-serif; font-size:12px; color:var(--dim); direction:ltr; flex-shrink:0; }
+.cand-select {
+  padding:6px 14px; border-radius:12px; font-family:'Cairo',sans-serif;
+  font-size:13px; font-weight:600; background:rgba(79,201,189,0.1);
+  color:var(--nile); border:1px solid rgba(79,201,189,0.25);
+  transition:all var(--t-hover); flex-shrink:0; white-space:nowrap;
+}
+.cand-select:hover { background:rgba(79,201,189,0.2); }
+.cand-item.selected .cand-select { background:var(--nile); color:var(--bg); border-color:var(--nile); }
+.cand-spinner { width:18px; height:18px; border:2px solid var(--line); border-top-color:var(--nile); border-radius:50%; animation:spin .8s linear infinite; flex-shrink:0; }
+
+/* ============================================
+   Player Card
+   ============================================ */
+.player-card { display:none; }
+.player-card.visible { display:block; }
+.player-status { display:flex; align-items:center; gap:8px; margin-bottom:16px; font-family:'Cairo',sans-serif; font-size:14px; color:var(--muted); }
+.status-dot { width:8px; height:8px; border-radius:50%; background:var(--nile); flex-shrink:0; }
+
+.player-controls { display:flex; align-items:center; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+.speed-btn { padding:4px 10px; border-radius:8px; font-family:'Inter',sans-serif; font-size:12px; font-weight:500; color:var(--muted); background:var(--surface-2); border:1px solid var(--line); transition:all var(--t-hover); }
+.speed-btn.active { color:var(--nile); border-color:var(--nile); }
+.speed-btn:hover { color:var(--text); }
+.download-btn { padding:6px 12px; border-radius:10px; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; color:var(--text); background:var(--surface-2); border:1px solid var(--line); display:inline-flex; align-items:center; gap:4px; text-decoration:none; transition:filter var(--t-hover),transform var(--t-press); }
+.download-btn:hover { filter:brightness(1.15); transform:translateY(-1px); }
+
+.karaoke-line { font-family:'Noto Naskh Arabic',serif; font-size:26px; line-height:1.7; direction:rtl; text-align:start; margin-bottom:20px; min-height:48px; }
+.karaoke-line .word { display:inline; color:var(--dim); transition:color 200ms,background-color 200ms; padding:2px 4px; border-radius:6px; }
+.karaoke-line .word.spoken { color:var(--text); }
+.karaoke-line .word.current { color:var(--nile); background:rgba(79,201,189,0.12); }
+
+.waveform-wrap { direction:ltr; position:relative; height:72px; cursor:pointer; margin-bottom:4px; }
+.waveform-bars { display:flex; align-items:center; gap:2px; height:100%; position:relative; }
+.waveform-bars .bar { flex:1; background:var(--line); border-radius:2px; min-height:4px; }
+.waveform-teal { position:absolute; inset:0; display:flex; align-items:center; gap:2px; clip-path:inset(0 100% 0 0); transition:clip-path 100ms linear; }
+.waveform-teal .bar { flex:1; background:var(--nile); border-radius:2px; min-height:4px; }
+.playhead { position:absolute; top:0; bottom:0; width:2px; background:var(--text); border-radius:1px; left:0; transition:left 100ms linear; pointer-events:none; }
+.waveform-times { display:flex; justify-content:space-between; font-family:'Inter',sans-serif; font-size:12px; color:var(--muted); direction:ltr; margin-bottom:16px; }
+.play-btn { width:56px; height:56px; border-radius:50%; background:var(--nile); display:flex; align-items:center; justify-content:center; margin:0 auto; transition:filter var(--t-hover),transform var(--t-press); }
+.play-btn:hover { filter:brightness(1.1); transform:scale(1.05); }
+.play-btn:active { transform:scale(0.95); }
+.play-btn svg { fill:var(--bg); width:24px; height:24px; }
+
+/* ============================================
+   Voice Card
+   ============================================ */
+.voice-current { display:flex; align-items:center; gap:12px; padding:12px 16px; background:var(--surface-2); border:1px solid var(--line); border-radius:16px; margin-bottom:12px; }
+.voice-icon { width:40px; height:40px; border-radius:10px; background:var(--pink); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.voice-icon svg { width:20px; height:20px; fill:var(--pink-text); }
+.voice-info { flex:1; min-width:0; }
+.voice-name-row { display:flex; align-items:center; gap:8px; }
+.voice-name { font-family:'Inter',sans-serif; font-size:14px; font-weight:500; direction:ltr; text-align:start; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.gender-badge {
+  display:none; padding:2px 8px; border-radius:999px; font-family:'Inter',sans-serif;
+  font-size:11px; font-weight:600; flex-shrink:0; letter-spacing:0.5px;
+}
+.gender-badge.visible { display:inline-flex; }
+.gender-badge.female { background:rgba(238,141,177,0.15); color:var(--pink); }
+.gender-badge.male { background:rgba(79,201,189,0.12); color:var(--nile); }
+.voice-label { font-size:12px; color:var(--muted); }
+.voice-preview-btn { width:36px; height:36px; border-radius:50%; background:rgba(79,201,189,0.12); display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:background var(--t-hover); }
+.voice-preview-btn:hover { background:rgba(79,201,189,0.22); }
+.voice-preview-btn svg { width:16px; height:16px; fill:var(--nile); }
+
+.voice-actions { display:flex; gap:8px; margin-bottom:12px; }
+.voice-actions .btn-secondary { font-size:13px; }
+.drop-hint { font-size:12px; color:var(--dim); text-align:center; margin-bottom:12px; }
+.voice-tip { display:flex; align-items:flex-start; gap:8px; padding:12px 16px; background:rgba(79,201,189,0.07); border:1px solid rgba(79,201,189,0.18); border-radius:16px; font-size:13px; color:var(--muted); line-height:1.6; }
+.voice-tip b { color:var(--nile); white-space:nowrap; }
+
+/* ============================================
+   Style Card — Presets + Sliders
+   ============================================ */
+.preset-row { display:flex; gap:6px; margin-bottom:20px; background:var(--surface-2); border-radius:16px; padding:4px; }
+.preset-btn {
+  flex:1; padding:8px 4px; border-radius:12px; font-family:'Cairo',sans-serif;
+  font-size:14px; font-weight:600; text-align:center; color:var(--muted);
+  transition:all var(--t-state);
+}
+.preset-btn:hover { color:var(--text); }
+.preset-btn.active { background:var(--surface); color:var(--text); box-shadow:0 1px 4px rgba(0,0,0,0.2); }
+.preset-hint { font-family:'Inter',sans-serif; font-size:11px; color:var(--dim); text-align:center; margin-top:-14px; margin-bottom:16px; }
+
+.slider-group { margin-bottom:20px; }
+.slider-header { display:flex; align-items:baseline; gap:8px; margin-bottom:2px; }
+.slider-label-ar { font-family:'Cairo',sans-serif; font-size:15px; font-weight:600; }
+.slider-label-en { font-family:'Inter',sans-serif; font-size:12px; color:var(--muted); direction:ltr; }
+.slider-value { margin-inline-start:auto; font-family:'Inter',sans-serif; font-size:14px; font-weight:600; color:var(--nile); direction:ltr; }
+.slider-ends { display:flex; justify-content:space-between; font-size:11px; color:var(--dim); margin-bottom:6px; }
+
+input[type="range"] {
+  -webkit-appearance:none; appearance:none; width:100%; height:6px;
+  background:var(--line); border-radius:3px; outline:none; direction:ltr;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance:none; width:20px; height:20px; border-radius:50%;
+  background:var(--nile); cursor:pointer; border:3px solid var(--surface);
+  box-shadow:0 1px 4px rgba(0,0,0,0.3);
+}
+input[type="range"]::-moz-range-thumb {
+  width:20px; height:20px; border-radius:50%; background:var(--nile);
+  cursor:pointer; border:3px solid var(--surface);
+}
+input[type="range"]:focus-visible { outline:2px solid var(--nile); outline-offset:4px; }
+
+.accordion-toggle { display:flex; align-items:center; gap:8px; width:100%; padding:12px 0 4px; font-family:'Cairo',sans-serif; font-size:14px; font-weight:600; color:var(--muted); cursor:pointer; border-top:1px solid var(--line); }
+.accordion-toggle .chevron { transition:transform var(--t-state); margin-inline-start:auto; }
+.accordion-toggle.open .chevron { transform:rotate(90deg); }
+.accordion-body { display:none; padding-top:12px; }
+.accordion-body.open { display:block; }
+.mini-field { margin-bottom:12px; }
+.mini-field label { display:block; font-family:'Inter',sans-serif; font-size:12px; font-weight:500; color:var(--muted); margin-bottom:4px; }
+.mini-field input[type="number"] { width:100%; padding:8px 12px; background:var(--surface-2); border:1px solid var(--line); border-radius:12px; color:var(--text); font-family:'Inter',sans-serif; font-size:14px; outline:none; }
+.mini-field input[type="number"]:focus { border-color:var(--nile); }
+
+/* ============================================
+   History
+   ============================================ */
+.history-card { display:none; }
+.history-card.visible { display:block; }
+.history-item { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line); }
+.history-item:last-child { border-bottom:none; }
+.history-play { width:32px; height:32px; border-radius:50%; background:var(--surface-2); display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:background var(--t-hover); }
+.history-play:hover { background:rgba(79,201,189,0.15); }
+.history-play svg { width:14px; height:14px; fill:var(--nile); }
+.history-text { flex:1; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+.history-tag { font-family:'Cairo',sans-serif; font-size:11px; font-weight:600; color:var(--nile); background:rgba(79,201,189,0.12); padding:2px 8px; border-radius:999px; flex-shrink:0; }
+.history-dur { font-family:'Inter',sans-serif; font-size:12px; color:var(--dim); direction:ltr; flex-shrink:0; }
+.history-dl { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--muted); text-decoration:none; transition:color var(--t-hover); }
+.history-dl:hover { color:var(--text); }
+
+/* ============================================
+   Footer & Focus & Responsive
+   ============================================ */
+.footer { text-align:center; font-family:'Inter',sans-serif; font-size:13px; color:var(--muted); padding:56px 0 24px; }
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible { outline:2px solid var(--nile); outline-offset:3px; }
+@media(max-width:900px) { .page{padding:0 16px} .grid{grid-template-columns:1fr} .hero h1{font-size:36px} }
+@media(max-width:600px) { .hero h1{font-size:28px} .text-input{font-size:22px} .karaoke-line{font-size:20px} .btn-generate{min-height:52px;font-size:18px} }
+@media(prefers-reduced-motion:reduce) { .lattice{animation:none} .logo-bars span{animation:none} .bar{transition:none!important} }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0; }
+  </style>
+</head>
+<body>
+<div class="lattice"></div>
+<div class="page">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="logo-tile"><div class="logo-bars"><span></span><span></span><span></span><span></span><span></span></div></div>
+    <div class="brand"><span class="brand-en">IspeakMasri</span><span class="brand-ar">أنا بتكلم مصري</span></div>
+    <button class="theme-btn" id="btn-theme" type="button" aria-label="تبديل المظهر">
+      <svg id="icon-sun" viewBox="0 0 24 24"><path d="M12 18a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm0-16a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0V3a1 1 0 0 1 1-1zm0 17a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1zM4.22 5.64a1 1 0 0 1 1.41-1.41l.71.7A1 1 0 1 1 4.93 6.35l-.7-.71zm12.73 12.73a1 1 0 0 1 1.41-1.42l.71.71a1 1 0 1 1-1.41 1.41l-.71-.7zM2 12a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2H3a1 1 0 0 1-1-1zm17 0a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2h-1a1 1 0 0 1-1-1zM5.64 19.78a1 1 0 0 1-1.42-1.41l.71-.71a1 1 0 0 1 1.41 1.41l-.7.71zM18.36 7.05a1 1 0 0 1-1.41-1.41l.7-.71a1 1 0 1 1 1.42 1.41l-.71.71z"/></svg>
+      <svg id="icon-moon" viewBox="0 0 24 24" style="display:none"><path d="M12.1 22c-5.5 0-10-4.5-10-10 0-4.4 2.9-8.3 7.1-9.6.4-.1.9.1 1 .5.1.3 0 .6-.2.8-1.5 1.7-2.2 4-1.8 6.4.6 3.5 3.6 6.1 7.1 6.2 1.3 0 2.6-.3 3.7-.9.4-.2.9-.1 1.1.3.2.3.1.6 0 .9-1.8 2.9-4.8 4.4-8 4.4z"/></svg>
+      <span id="theme-label">فاتح · Light</span>
+    </button>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <h1>اكتب… وإحنا نقولها</h1>
+    <p class="hero-en">Type it. We'll say it — in real Egyptian Arabic.</p>
+  </section>
+
+  <!-- Grid -->
+  <div class="grid">
+
+    <!-- ===== Main column ===== -->
+    <div class="main-col">
+
+      <!-- Input Card -->
+      <div class="card" id="input-card">
+        <div class="card-title">
+          <span class="ar">قول بالمصري</span>
+          <span class="en">Say it in Egyptian</span>
+          <span class="counter" id="char-counter">0 / 300</span>
+        </div>
+        <div class="text-wrap">
+          <textarea class="text-input" id="text-input" dir="auto" lang="ar"
+            placeholder="اكتب هنا بالمصري…" maxlength="350"
+          >انا سبت الشغل و راجع دلوقتي علي طول.</textarea>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+
+        <div class="chips-row">
+          <span class="chips-label">جرّب مثال · Try one</span>
+          <button class="chip" data-example="إزيك يا باشا، عامل إيه؟">إزيك يا باشا، عامل إيه؟</button>
+          <button class="chip" data-example="هنتقابل بكرة إن شاء الله">هنتقابل بكرة إن شاء الله</button>
+          <button class="chip" data-example="يلا بينا نشرب شاي">يلا بينا نشرب شاي</button>
+          <button class="chip" data-example="الجو حر أوي النهاردة">الجو حر أوي النهاردة</button>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn-secondary" id="btn-clear">امسح <span style="font-family:Inter;font-size:12px;color:var(--dim);direction:ltr">Clear</span></button>
+          <button class="btn-secondary" id="btn-random">جرّب مثال <span style="font-family:Inter;font-size:12px;color:var(--dim);direction:ltr">Try one</span></button>
+        </div>
+
+        <div class="gen-row">
+          <button class="btn-generate" id="btn-generate">
+            <span class="spinner"></span>
+            <span class="btn-label">ولّد الصوت  Generate voice</span>
+            <span class="btn-loading-label">ثانية واحدة… بنجهّز الصوت</span>
+          </button>
+          <button class="btn-bestof" id="btn-bestof" title="وّلد عدة نسخ واختار الأحسن">
+            <span id="bestof-label">ولّد الأحسن</span>
+          </button>
+        </div>
+        <!-- Count picker — shown only when best-of mode is active -->
+        <div id="count-picker" style="display:none;margin-top:8px">
+          <div style="display:flex;align-items:center;gap:6px;direction:ltr">
+            <span style="font-family:Inter;font-size:11px;color:var(--dim);white-space:nowrap;direction:ltr">عدد النسخ</span>
+            <div style="display:flex;gap:4px">
+              <button class="count-opt" data-n="2">2</button>
+              <button class="count-opt" data-n="3">3</button>
+              <button class="count-opt active" data-n="5">5</button>
+              <button class="count-opt" data-n="7">7</button>
+            </div>
+          </div>
+        </div>
+        <div class="shortcut-hint">Ctrl + Enter</div>
+        <div class="error-msg" id="error-msg"></div>
+
+        <!-- Candidates panel -->
+        <div class="candidates" id="candidates">
+          <div class="card-title" style="margin-top:12px">
+            <span class="ar">اختار الأحسن</span>
+            <span class="en">Pick the best</span>
+          </div>
+          <div class="cand-list" id="cand-list"></div>
+        </div>
+      </div>
+
+      <!-- Player Card -->
+      <div class="card player-card" id="player-card">
+        <div class="player-status">
+          <span class="status-dot"></span>
+          <span id="status-text">تمام، الصوت جاهز</span>
+          <span style="font-family:Inter;font-size:11px;color:var(--dim);direction:ltr;margin-inline-start:4px">Ready</span>
+        </div>
+        <div class="player-controls">
+          <button class="speed-btn" data-speed="0.75">0.75×</button>
+          <button class="speed-btn active" data-speed="1">1×</button>
+          <button class="speed-btn" data-speed="1.25">1.25×</button>
+          <a class="download-btn" id="dl-wav" href="#" download="ispeakmasri.wav">WAV ↓</a>
+        </div>
+        <div class="karaoke-line" id="karaoke-line"></div>
+        <div class="waveform-wrap" id="waveform-wrap">
+          <div class="waveform-bars" id="waveform-base"></div>
+          <div class="waveform-teal" id="waveform-teal"></div>
+          <div class="playhead" id="playhead"></div>
+        </div>
+        <div class="waveform-times"><span id="time-current">0:00</span><span id="time-total">0:00</span></div>
+        <button class="play-btn" id="btn-play" aria-label="تشغيل / إيقاف">
+          <svg id="icon-play" viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg>
+          <svg id="icon-pause" viewBox="0 0 24 24" style="display:none"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+        </button>
+      </div>
+
+      <!-- History Card -->
+      <div class="card history-card" id="history-card">
+        <div class="card-title"><span class="ar">آخر التوليدات</span><span class="en">Recent takes</span></div>
+        <div id="history-list"></div>
+      </div>
+    </div>
+
+    <!-- ===== Side column ===== -->
+    <div class="side-col">
+
+      <!-- Voice Card -->
+      <div class="card" id="voice-card">
+        <div class="card-title"><span class="ar">الصوت</span><span class="en">Voice</span></div>
+        <div class="voice-current" id="voice-current">
+          <div class="voice-icon"><svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg></div>
+          <div class="voice-info">
+            <div class="voice-name-row">
+              <span class="voice-name" id="voice-name">female_voice.wav</span>
+              <span class="gender-badge female visible" id="gender-badge">♀ أنثى</span>
+            </div>
+            <div class="voice-label">صوتك المرجعي — Reference voice</div>
+          </div>
+          <button class="voice-preview-btn" id="btn-preview-voice" aria-label="معاينة الصوت">
+            <svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg>
+          </button>
+        </div>
+        <div class="voice-actions">
+          <button class="btn-secondary" id="btn-upload"><svg style="width:16px;height:16px;fill:currentColor" viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M13.5,16V19H10.5V16H8L12,12L16,16H13.5M13,9V3.5L18.5,9H13Z"/></svg> ارفع ملف</button>
+          <button class="btn-secondary" id="btn-record"><svg style="width:16px;height:16px;fill:currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/></svg> سجّل صوتك</button>
+        </div>
+        <input type="file" id="file-input" class="sr-only" accept="audio/*">
+        <div class="drop-hint">أو اسحب الملف وسيبه هنا</div>
+        <button class="btn-secondary" id="btn-calibrate" style="display:none;width:100%;margin-bottom:12px;border-color:rgba(79,201,189,0.35);color:var(--nile)">
+          <svg style="width:16px;height:16px;fill:currentColor" viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+          <span id="calibrate-label">معايرة الصوت — Auto-tune params</span>
+        </button>
+        <div class="voice-tip"><b>تلميح:</b><span>استخدم صوتاً مرجعياً بالعامية المصرية للحصول على أفضل نتيجة 💡</span></div>
+      </div>
+
+      <!-- Style Card -->
+      <div class="card" id="style-card">
+        <div class="card-title"><span class="ar">الأسلوب</span><span class="en">Style</span></div>
+
+        <!-- Presets -->
+        <div class="preset-row" id="preset-row">
+          <button class="preset-btn" data-preset="calm">هادي</button>
+          <button class="preset-btn active" data-preset="natural">طبيعي</button>
+          <button class="preset-btn" data-preset="expressive">تعبيري</button>
+        </div>
+        <div class="preset-hint" id="preset-hint">أفضل إعدادات للصوت المختار</div>
+
+        <div class="slider-group">
+          <div class="slider-header">
+            <span class="slider-label-ar">شدة الإحساس</span>
+            <span class="slider-label-en">Exaggeration</span>
+            <span class="slider-value" id="val-exag">0.40</span>
+          </div>
+          <div class="slider-ends"><span>هادي</span><span>درامي</span></div>
+          <input type="range" id="slider-exag" min="0.1" max="2" step="0.05" value="0.4">
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-header">
+            <span class="slider-label-ar">الإيقاع</span>
+            <span class="slider-label-en">CFG / Pace</span>
+            <span class="slider-value" id="val-cfg">0.40</span>
+          </div>
+          <div class="slider-ends"><span>أبطأ</span><span>أسرع</span></div>
+          <input type="range" id="slider-cfg" min="0" max="1" step="0.05" value="0.4">
+        </div>
+
+        <button class="accordion-toggle" id="adv-toggle">إعدادات متقدمة — Advanced <span class="chevron">◀</span></button>
+        <div class="accordion-body" id="adv-body">
+          <div class="mini-field"><label for="input-seed">Seed</label><input type="number" id="input-seed" value="0" min="0"></div>
+          <div class="mini-field">
+            <label for="input-temp">Temperature</label>
+            <input type="range" id="input-temp" min="0.05" max="5" step="0.05" value="0.65" style="margin-top:4px">
+            <div style="display:flex;justify-content:space-between;font-family:Inter;font-size:11px;color:var(--dim);margin-top:2px">
+              <span>0.05</span><span id="val-temp" style="color:var(--nile)">0.65</span><span>5.0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">Powered by Chatterbox · Egyptian Checkpoint · ResembleAI</footer>
+</div>
+
+<audio id="audio-player" preload="metadata"></audio>
+<audio id="audio-preview" preload="none"></audio>
+
+<script>
+/* ============================================
+   DOM
+   ============================================ */
+const $ = id => document.getElementById(id);
+const textInput=  $('text-input'), charCounter= $('char-counter'), progressFill= $('progress-fill');
+const btnGenerate=$('btn-generate'), btnBestof=$('btn-bestof'), btnClear=$('btn-clear'), btnRandom=$('btn-random');
+const errorMsg=   $('error-msg'), playerCard=$('player-card'), karaokeLine=$('karaoke-line');
+const waveBase=   $('waveform-base'), waveTeal=$('waveform-teal'), playhead=$('playhead');
+const timeCurrent=$('time-current'), timeTotal=$('time-total'), btnPlay=$('btn-play');
+const iconPlay=   $('icon-play'), iconPause=$('icon-pause'), audioPlayer=$('audio-player');
+const audioPreview=$('audio-preview'), historyCard=$('history-card'), historyList=$('history-list');
+const dlWav=      $('dl-wav'), voiceNameEl=$('voice-name'), fileInput=$('file-input');
+const sliderExag= $('slider-exag'), sliderCfg=$('slider-cfg'), valExag=$('val-exag'), valCfg=$('val-cfg');
+const inputSeed=  $('input-seed'), inputTemp=$('input-temp'), valTemp=$('val-temp');
+const advToggle=  $('adv-toggle'), advBody=$('adv-body'), statusText=$('status-text');
+const genderBadge=$('gender-badge'), candidatesPanel=$('candidates'), candList=$('cand-list');
+const presetHint= $('preset-hint');
+
+/* ============================================
+   State
+   ============================================ */
+let uploadedFile = null;
+let currentBlobUrl = null;
+let previewBlobUrl = null;
+let isGenerating = false;
+let typewriterTimer = null;
+let detectedGender = 'female'; // default for the built-in voice
+let bestOfMode = false;
+const MAX_HISTORY = 5;
+const history = [];
+let activeHistoryId = null;
+const BAR_COUNT = 80;
+const candidateBlobs = []; // stores blob URLs for best-of-N
+
+/* ============================================
+   Gender-aware presets
+   ============================================ */
+const PRESETS = {
+  female: {
+    natural:    { exag: 0.40, cfg: 0.40, temp: 0.65 },
+    expressive: { exag: 0.65, cfg: 0.35, temp: 0.72 },
+    calm:       { exag: 0.30, cfg: 0.50, temp: 0.60 },
+  },
+  male: {
+    natural:    { exag: 0.35, cfg: 0.50, temp: 0.60 },
+    expressive: { exag: 0.55, cfg: 0.45, temp: 0.68 },
+    calm:       { exag: 0.25, cfg: 0.55, temp: 0.55 },
+  },
+  unknown: {
+    natural:    { exag: 0.38, cfg: 0.45, temp: 0.63 },
+    expressive: { exag: 0.60, cfg: 0.40, temp: 0.70 },
+    calm:       { exag: 0.28, cfg: 0.52, temp: 0.58 },
+  }
+};
+
+function applyPreset(name) {
+  const p = (PRESETS[detectedGender] || PRESETS.unknown)[name];
+  if (!p) return;
+  sliderExag.value = p.exag; valExag.textContent = p.exag.toFixed(2);
+  sliderCfg.value  = p.cfg;  valCfg.textContent  = p.cfg.toFixed(2);
+  inputTemp.value  = p.temp; valTemp.textContent  = p.temp.toFixed(2);
+
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.toggle('active', b.dataset.preset === name));
+}
+
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+});
+
+/* ============================================
+   Gender detection
+   ============================================ */
+async function detectGender(file) {
+  try {
+    const form = new FormData();
+    form.append('audio', file);
+    const res = await fetch('/api/detect-gender', { method: 'POST', body: form });
+    const data = await res.json();
+    setGender(data.gender || 'unknown');
+  } catch {
+    setGender('unknown');
+  }
+}
+
+function setGender(g) {
+  detectedGender = g;
+  genderBadge.className = 'gender-badge';
+  if (g === 'female') {
+    genderBadge.textContent = '♀ أنثى';
+    genderBadge.classList.add('female', 'visible');
+  } else if (g === 'male') {
+    genderBadge.textContent = '♂ ذكر';
+    genderBadge.classList.add('male', 'visible');
+  } else {
+    genderBadge.classList.remove('visible');
+  }
+  // Re-apply active preset with new gender values
+  const activePreset = document.querySelector('.preset-btn.active');
+  if (activePreset) applyPreset(activePreset.dataset.preset);
+
+  presetHint.textContent = g === 'female' ? 'إعدادات محسّنة لصوت أنثوي' :
+                           g === 'male'   ? 'إعدادات محسّنة لصوت ذكوري' :
+                                            'أفضل إعدادات للصوت المختار';
+}
+
+/* ============================================
+   Character counter
+   ============================================ */
+function updateCounter() {
+  const len = textInput.value.length;
+  charCounter.textContent = `${len} / 300`;
+  const pct = Math.min((len / 300) * 100, 100);
+  progressFill.style.width = pct + '%';
+  progressFill.classList.toggle('warn', len >= 240 && len < 300);
+  progressFill.classList.toggle('danger', len >= 300);
+}
+textInput.addEventListener('input', updateCounter);
+updateCounter();
+
+/* ============================================
+   Typewriter
+   ============================================ */
+function cancelTypewriter() { if (typewriterTimer) { clearInterval(typewriterTimer); typewriterTimer = null; } }
+function typewrite(str) {
+  cancelTypewriter(); textInput.value = ''; let i = 0;
+  typewriterTimer = setInterval(() => { if (i >= str.length) { cancelTypewriter(); return; } textInput.value += str[i++]; updateCounter(); }, 24);
+}
+document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => typewrite(c.dataset.example)));
+textInput.addEventListener('keydown', cancelTypewriter);
+
+const EXAMPLES = ['إزيك يا باشا، عامل إيه؟','هنتقابل بكرة إن شاء الله','يلا بينا نشرب شاي','الجو حر أوي النهاردة'];
+btnClear.addEventListener('click', () => { cancelTypewriter(); textInput.value = ''; updateCounter(); textInput.focus(); });
+btnRandom.addEventListener('click', () => typewrite(EXAMPLES[Math.floor(Math.random() * EXAMPLES.length)]));
+
+/* ============================================
+   Sliders
+   ============================================ */
+sliderExag.addEventListener('input', () => { valExag.textContent = parseFloat(sliderExag.value).toFixed(2); });
+sliderCfg.addEventListener('input', () => { valCfg.textContent = parseFloat(sliderCfg.value).toFixed(2); });
+inputTemp.addEventListener('input', () => { valTemp.textContent = parseFloat(inputTemp.value).toFixed(2); });
+
+/* ============================================
+   Accordion
+   ============================================ */
+advToggle.addEventListener('click', () => { advToggle.classList.toggle('open'); advBody.classList.toggle('open'); });
+
+/* ============================================
+   Voice upload, preview & recording
+   ============================================ */
+function setVoiceFile(file) {
+  uploadedFile = file;
+  voiceNameEl.textContent = file.name;
+  const calBtn = $('btn-calibrate');
+  calBtn.style.display = '';
+  calBtn.style.borderColor = 'rgba(79,201,189,0.35)';
+  $('calibrate-label').textContent = 'معايرة الصوت — Auto-tune params';
+  detectGender(file);
+}
+
+$('btn-upload').addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => {
+  const f = fileInput.files[0]; if (!f) return;
+  setVoiceFile(f);
+});
+
+const voiceCard = $('voice-card');
+voiceCard.addEventListener('dragover', e => { e.preventDefault(); voiceCard.style.borderColor = 'var(--nile)'; });
+voiceCard.addEventListener('dragleave', () => { voiceCard.style.borderColor = ''; });
+voiceCard.addEventListener('drop', e => {
+  e.preventDefault(); voiceCard.style.borderColor = '';
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('audio/')) setVoiceFile(f);
+});
+
+/* ============================================
+   Voice Calibration
+   ============================================ */
+$('btn-calibrate').addEventListener('click', async () => {
+  if (!uploadedFile || isGenerating) return;
+  const btn = $('btn-calibrate');
+  const label = $('calibrate-label');
+  isGenerating = true;
+  btn.disabled = true;
+  btnGenerate.disabled = true;
+  btnBestof.disabled = true;
+  label.textContent = 'جاري المعايرة… بنجرّب 6 نسخ';
+
+  try {
+    const form = new FormData();
+    form.append('audio', uploadedFile);
+    form.append('gender', detectedGender);
+    const res = await fetch('/api/calibrate-voice', { method: 'POST', body: form });
+    const data = await res.json();
+
+    if (data.error) throw new Error(data.error);
+
+    const best = data.best;
+    // Apply best params to sliders
+    sliderExag.value  = best.params.exag; valExag.textContent = best.params.exag.toFixed(2);
+    sliderCfg.value   = best.params.cfg;  valCfg.textContent  = best.params.cfg.toFixed(2);
+    inputTemp.value   = best.params.temp; valTemp.textContent = best.params.temp.toFixed(2);
+
+    // Clear preset active state (custom params now)
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+
+    const scorePercent = Math.round(best.score * 100);
+    label.textContent = `✓ تم — أفضل إعدادات (${scorePercent}%)`;
+    presetHint.textContent = `معايرة تلقائية — ${best.label} (${scorePercent}%)`;
+    btn.style.borderColor = 'rgba(79,201,189,0.6)';
+  } catch (e) {
+    label.textContent = 'معايرة الصوت — Auto-tune params';
+    showError(e.message || 'فشل التحقق، جرّب تاني');
+  } finally {
+    isGenerating = false;
+    btn.disabled = false;
+    btnGenerate.disabled = false;
+    btnBestof.disabled = false;
+  }
+});
+
+$('btn-preview-voice').addEventListener('click', () => {
+  if (previewBlobUrl) { URL.revokeObjectURL(previewBlobUrl); previewBlobUrl = null; }
+  if (uploadedFile) {
+    previewBlobUrl = URL.createObjectURL(uploadedFile);
+    audioPreview.src = previewBlobUrl;
+  } else {
+    audioPreview.src = '/api/default-voice';
+  }
+  audioPreview.play();
+});
+
+/* ============================================
+   Recording (decoded and encoded to real 16-bit PCM WAV)
+   ============================================ */
+function encodeWavBlob(audioBuf) {
+  const ch0 = audioBuf.getChannelData(0);
+  const numChannels = audioBuf.numberOfChannels;
+  const len = ch0.length;
+  const mono = new Float32Array(len);
+  if (numChannels > 1) {
+    for (let c = 0; c < numChannels; c++) {
+      const ch = audioBuf.getChannelData(c);
+      for (let i = 0; i < len; i++) mono[i] += ch[i] / numChannels;
+    }
+  } else {
+    mono.set(ch0);
+  }
+  const wavBuffer = new ArrayBuffer(44 + len * 2);
+  const view = new DataView(wavBuffer);
+  const writeStr = (off, s) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); };
+  const sr = audioBuf.sampleRate;
+  writeStr(0, 'RIFF');
+  view.setUint32(4, 36 + len * 2, true);
+  writeStr(8, 'WAVE');
+  writeStr(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sr, true);
+  view.setUint32(28, sr * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeStr(36, 'data');
+  view.setUint32(40, len * 2, true);
+  for (let i = 0, off = 44; i < len; i++, off += 2) {
+    const s = Math.max(-1, Math.min(1, mono[i]));
+    view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+  }
+  return new Blob([wavBuffer], { type: 'audio/wav' });
+}
+
+let mediaRecorder = null, recordChunks = [];
+const btnRecord = $('btn-record');
+btnRecord.addEventListener('click', async () => {
+  if (mediaRecorder && mediaRecorder.state === 'recording') { mediaRecorder.stop(); return; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream); recordChunks = [];
+    mediaRecorder.ondataavailable = e => { if (e.data.size) recordChunks.push(e.data); };
+    mediaRecorder.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      btnRecord.innerHTML = '<svg style="width:16px;height:16px;fill:currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/></svg> سجّل صوتك';
+      btnRecord.style.borderColor = '';
+      const rawBlob = new Blob(recordChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+      let ctx = null;
+      try {
+        ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const decoded = await ctx.decodeAudioData(await rawBlob.arrayBuffer());
+        const wavBlob = encodeWavBlob(decoded);
+        setVoiceFile(new File([wavBlob], 'recorded.wav', { type: 'audio/wav' }));
+      } catch {
+        setVoiceFile(new File([rawBlob], 'recorded.webm', { type: rawBlob.type || 'audio/webm' }));
+      } finally {
+        if (ctx) ctx.close().catch(() => {});
+      }
+    };
+    mediaRecorder.start();
+    btnRecord.innerHTML = '<svg style="width:16px;height:16px;fill:var(--danger)" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg> إيقاف';
+    btnRecord.style.borderColor = 'var(--danger)';
+  } catch { showError('لازم تسمح للمايك عشان تسجّل'); }
+});
+
+/* ============================================
+   Error display
+   ============================================ */
+function showError(msg) {
+  errorMsg.textContent = msg; errorMsg.classList.add('visible');
+  setTimeout(() => errorMsg.classList.remove('visible'), 5000);
+}
+
+/* ============================================
+   Build FormData
+   ============================================ */
+function buildForm() {
+  const form = new FormData();
+  form.append('text', textInput.value.trim());
+  form.append('exaggeration', sliderExag.value);
+  form.append('cfg_weight', sliderCfg.value);
+  form.append('temperature', inputTemp.value);
+  form.append('seed', inputSeed.value);
+  if (uploadedFile) form.append('audio', uploadedFile);
+  return form;
+}
+
+function clearCandidateBlobs() {
+  for (const c of candidateBlobs) {
+    if (c && c.url && c.url !== currentBlobUrl && !history.some(item => item.blobUrl === c.url)) {
+      URL.revokeObjectURL(c.url);
+    }
+  }
+  candidateBlobs.length = 0;
+}
+
+/* ============================================
+   Single Generate
+   ============================================ */
+async function generateSingle() {
+  if (isGenerating) return;
+  const text = textInput.value.trim();
+  if (!text) { showError('اكتب حاجة الأول'); return; }
+  if (text.length > 300) { showError('النص طويل شوية، الحد الأقصى 300 حرف'); return; }
+
+  isGenerating = true;
+  btnGenerate.disabled = true;
+  $('btn-calibrate').disabled = true;
+  btnGenerate.classList.add('loading');
+  errorMsg.classList.remove('visible');
+  playerCard.classList.remove('visible');
+  candidatesPanel.classList.remove('visible');
+
+  try {
+    const res = await fetch('/api/generate', { method: 'POST', body: buildForm() });
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error || 'حصلت مشكلة، جرّب تاني'); }
+    const blob = await res.blob();
+    selectAudio(blob, text);
+  } catch (e) {
+    showError(e.message || 'حصلت مشكلة، جرّب تاني');
+  } finally {
+    isGenerating = false;
+    btnGenerate.disabled = false;
+    $('btn-calibrate').disabled = false;
+    btnGenerate.classList.remove('loading');
+  }
+}
+
+/* ============================================
+   Best of N Generate (server-scored)
+   ============================================ */
+async function generateBestOf3() {
+  if (isGenerating) return;
+  const text = textInput.value.trim();
+  if (!text) { showError('اكتب حاجة الأول'); return; }
+  if (text.length > 300) { showError('النص طويل شوية، الحد الأقصى 300 حرف'); return; }
+
+  isGenerating = true;
+  btnGenerate.disabled = true;
+  btnBestof.disabled = true;
+  $('btn-calibrate').disabled = true;
+  btnGenerate.classList.add('loading');
+  errorMsg.classList.remove('visible');
+  playerCard.classList.remove('visible');
+  candidatesPanel.classList.add('visible');
+
+  // Revoke previous unreferenced candidate URLs and show loading state
+  clearCandidateBlobs();
+  candList.innerHTML = `
+    <div class="cand-item generating" style="justify-content:center;gap:12px;padding:24px">
+      <div class="cand-spinner"></div>
+      <span style="font-size:15px;color:var(--dim)">بنولّد ${bestOfCount} نسخ وبنختار الأحسن…</span>
+    </div>`;
+
+  try {
+    const form = buildForm();
+    form.set('count', String(bestOfCount));
+    const res = await fetch('/api/generate-best', { method: 'POST', body: form });
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error || 'حصلت مشكلة'); }
+    const data = await res.json();
+    const candidates = data.candidates || [];
+
+    if (!candidates.length || candidates.every(c => c.error)) {
+      throw new Error('كل النسخ فشلت');
+    }
+
+    candList.innerHTML = '';
+    let autoSelectedIdx = -1;
+
+    for (const c of candidates) {
+      if (c.error) {
+        const row = document.createElement('div');
+        row.className = 'cand-item';
+        row.innerHTML = `<span class="cand-num">${c.index + 1}</span><span style="flex:1;font-size:14px;color:var(--danger)">فشل</span>`;
+        candList.appendChild(row);
+        continue;
+      }
+
+      // Decode base64 audio
+      const bytes = Uint8Array.from(atob(c.audio_b64), ch => ch.charCodeAt(0));
+      const blob = new Blob([bytes], { type: 'audio/wav' });
+      const url = URL.createObjectURL(blob);
+      candidateBlobs[c.index] = { blob, url, score: c.total_score };
+
+      const isRecommended = c.recommended;
+      if (isRecommended) autoSelectedIdx = c.index;
+
+      const scorePercent = Math.round(c.total_score * 100);
+      const scoreColor = scorePercent >= 75 ? 'var(--nile)' : scorePercent >= 50 ? 'var(--ochre)' : 'var(--danger)';
+
+      const row = document.createElement('div');
+      row.className = 'cand-item' + (isRecommended ? ' selected' : '');
+      row.id = `cand-${c.index}`;
+      row.innerHTML = `
+        <span class="cand-num">${c.index + 1}</span>
+        <button class="cand-play" aria-label="تشغيل"><svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg></button>
+        <div class="cand-mini-bars" id="cand-bars-${c.index}"></div>
+        <span class="cand-dur">${fmtTime(c.duration)}</span>
+        <span style="font-family:Inter;font-size:12px;font-weight:600;color:${scoreColor};direction:ltr;min-width:36px;text-align:center">${scorePercent}%</span>
+        ${isRecommended ? '<span style="font-size:14px;flex-shrink:0" title="الأفضل تلقائياً">⭐</span>' : ''}
+        <button class="cand-select">${isRecommended ? '✓ الأحسن' : 'استخدم ده'}</button>
+      `;
+      candList.appendChild(row);
+
+      // Draw mini waveform
+      drawMiniBars(document.getElementById(`cand-bars-${c.index}`), blob);
+
+      // Wire events
+      row.querySelector('.cand-play').addEventListener('click', () => { audioPreview.src = url; audioPreview.play(); });
+      row.querySelector('.cand-select').addEventListener('click', () => selectCandidate(c.index, text));
+    }
+
+    // Auto-select the recommended candidate
+    if (autoSelectedIdx >= 0) {
+      selectCandidate(autoSelectedIdx, text);
+    }
+
+  } catch (e) {
+    showError(e.message || 'حصلت مشكلة، جرّب تاني');
+    candidatesPanel.classList.remove('visible');
+  } finally {
+    isGenerating = false;
+    btnGenerate.disabled = false;
+    btnBestof.disabled = false;
+    $('btn-calibrate').disabled = false;
+    btnGenerate.classList.remove('loading');
+  }
+}
+
+function selectCandidate(idx, text) {
+  const c = candidateBlobs[idx];
+  if (!c) return;
+  document.querySelectorAll('.cand-item').forEach(el => el.classList.remove('selected'));
+  const row = document.getElementById(`cand-${idx}`);
+  if (row) row.classList.add('selected');
+  selectAudio(c.blob, text);
+}
+
+async function drawMiniBars(container, blob) {
+  let heights;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const buf = await ctx.decodeAudioData(await blob.arrayBuffer());
+    const data = buf.getChannelData(0);
+    const step = Math.floor(data.length / 40);
+    heights = []; let mx = 0;
+    for (let i = 0; i < 40; i++) {
+      let pk = 0;
+      for (let j = i*step; j < (i+1)*step && j < data.length; j++) pk = Math.max(pk, Math.abs(data[j]));
+      heights.push(pk); mx = Math.max(mx, pk);
+    }
+    if (mx > 0) heights = heights.map(h => h / mx);
+    ctx.close();
+  } catch {
+    heights = Array.from({length:40}, () => 0.3 + 0.4 * Math.random());
+  }
+  container.innerHTML = '';
+  heights.forEach(h => {
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    bar.style.height = Math.max(3, h * 28) + 'px';
+    container.appendChild(bar);
+  });
+}
+
+/* ============================================
+   Select audio → main player
+   ============================================ */
+function isUrlReferenced(url) {
+  if (!url) return false;
+  if (history.some(item => item.blobUrl === url)) return true;
+  if (candidateBlobs.some(c => c && c.url === url)) return true;
+  return false;
+}
+
+async function selectAudio(blob, text, opts = {}) {
+  const { addToHistory = true, historyId = null, existingUrl = null } = opts;
+
+  if (currentBlobUrl && !isUrlReferenced(currentBlobUrl)) {
+    URL.revokeObjectURL(currentBlobUrl);
+  }
+  currentBlobUrl = existingUrl || URL.createObjectURL(blob);
+
+  audioPlayer.src = currentBlobUrl;
+  dlWav.href = currentBlobUrl;
+  setupKaraoke(text);
+  const decodedDuration = await decodeAndDrawWaveform(blob);
+
+  playerCard.classList.add('visible');
+  statusText.textContent = 'تمام، الصوت جاهز';
+  timeCurrent.textContent = '0:00';
+  waveTeal.style.clipPath = 'inset(0 100% 0 0)';
+  playhead.style.left = '0%';
+
+  const duration = decodedDuration || (isFinite(audioPlayer.duration) ? audioPlayer.duration : 0);
+  if (duration) timeTotal.textContent = fmtTime(duration);
+
+  if (addToHistory) {
+    const id = Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+    activeHistoryId = id;
+    history.unshift({ id, text, blob, blobUrl: currentBlobUrl, duration, createdAt: Date.now() });
+    while (history.length > MAX_HISTORY) {
+      const evicted = history.pop();
+      if (evicted && evicted.blobUrl && evicted.blobUrl !== currentBlobUrl && !candidateBlobs.some(c => c && c.url === evicted.blobUrl)) {
+        URL.revokeObjectURL(evicted.blobUrl);
+      }
+    }
+    saveHistoryToDB();
+    renderHistory();
+  } else if (historyId) {
+    activeHistoryId = historyId;
+    renderHistory();
+  }
+
+  audioPlayer.play().catch(() => {});
+}
+
+/* ============================================
+   Button wiring
+   ============================================ */
+btnGenerate.addEventListener('click', () => {
+  if (bestOfMode) generateBestOf3();
+  else generateSingle();
+});
+
+let bestOfCount = 5;  // current chosen count
+
+const countPicker = document.getElementById('count-picker');
+
+// Count option pills
+document.querySelectorAll('.count-opt').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    bestOfCount = parseInt(btn.dataset.n, 10);
+    document.querySelectorAll('.count-opt').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (bestOfMode) updateBestofLabel();
+  });
+});
+
+function updateBestofLabel() {
+  $('bestof-label').textContent = bestOfMode
+    ? `✓ الأحسن من ${bestOfCount}`
+    : 'ولّد الأحسن';
+}
+
+btnBestof.addEventListener('click', () => {
+  bestOfMode = !bestOfMode;
+  btnBestof.classList.toggle('active', bestOfMode);
+  countPicker.style.display = bestOfMode ? '' : 'none';
+  if (!bestOfMode) candidatesPanel.classList.remove('visible');
+  updateBestofLabel();
+});
+
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); btnGenerate.click(); }
+});
+
+/* ============================================
+   Waveform
+   ============================================ */
+function drawBars(container, heights) {
+  container.innerHTML = '';
+  heights.forEach(h => {
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    bar.style.height = Math.max(4, h * 68) + 'px';
+    container.appendChild(bar);
+  });
+}
+
+async function decodeAndDrawWaveform(blob) {
+  let heights;
+  let duration = 0;
+  let ctx = null;
+  try {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const buf = await ctx.decodeAudioData(await blob.arrayBuffer());
+    duration = buf.duration || 0;
+    const data = buf.getChannelData(0);
+    const step = Math.max(1, Math.floor(data.length / BAR_COUNT));
+    heights = []; let mx = 0;
+    for (let i = 0; i < BAR_COUNT; i++) {
+      let pk = 0;
+      for (let j = i*step; j < (i+1)*step && j < data.length; j++) pk = Math.max(pk, Math.abs(data[j]));
+      heights.push(pk); mx = Math.max(mx, pk);
+    }
+    if (mx > 0) heights = heights.map(h => h / mx);
+  } catch {
+    heights = Array.from({length:BAR_COUNT}, (_,i) => 0.3 + 0.4*Math.sin((i/BAR_COUNT)*Math.PI) + 0.15*Math.random());
+  } finally {
+    if (ctx) ctx.close().catch(() => {});
+  }
+  drawBars(waveBase, heights);
+  drawBars(waveTeal, heights);
+  return duration;
+}
+
+/* ============================================
+   Playback
+   ============================================ */
+function fmtTime(s) { if (!s || !isFinite(s)) return '0:00'; const m = Math.floor(s/60), sec = Math.floor(s%60); return `${m}:${sec.toString().padStart(2,'0')}`; }
+function updatePlaybackUI() {
+  if (!audioPlayer.duration) return;
+  const p = audioPlayer.currentTime / audioPlayer.duration;
+  waveTeal.style.clipPath = `inset(0 ${(1-p)*100}% 0 0)`;
+  playhead.style.left = (p*100)+'%';
+  timeCurrent.textContent = fmtTime(audioPlayer.currentTime);
+  timeTotal.textContent = fmtTime(audioPlayer.duration);
+  updateKaraokeHighlight(p);
+}
+let rafId = null;
+function animLoop() { updatePlaybackUI(); if (!audioPlayer.paused) rafId = requestAnimationFrame(animLoop); }
+audioPlayer.addEventListener('play', () => { iconPlay.style.display='none'; iconPause.style.display='block'; animLoop(); });
+audioPlayer.addEventListener('pause', () => { iconPlay.style.display='block'; iconPause.style.display='none'; if(rafId){cancelAnimationFrame(rafId);rafId=null;} });
+audioPlayer.addEventListener('ended', () => { iconPlay.style.display='block'; iconPause.style.display='none'; if(rafId){cancelAnimationFrame(rafId);rafId=null;} });
+audioPlayer.addEventListener('loadedmetadata', () => {
+  if (!isFinite(audioPlayer.duration)) return;
+  timeTotal.textContent = fmtTime(audioPlayer.duration);
+  const activeItem = history.find(item => item.id === activeHistoryId);
+  if (activeItem && !activeItem.duration) {
+    activeItem.duration = audioPlayer.duration;
+    saveHistoryToDB();
+    renderHistory();
+  }
+});
+btnPlay.addEventListener('click', () => { if(audioPlayer.paused) audioPlayer.play(); else audioPlayer.pause(); });
+$('waveform-wrap').addEventListener('click', e => { const r=e.currentTarget.getBoundingClientRect(); const pct=(e.clientX-r.left)/r.width; if(audioPlayer.duration){audioPlayer.currentTime=pct*audioPlayer.duration; updatePlaybackUI();} });
+document.querySelectorAll('.speed-btn').forEach(btn => { btn.addEventListener('click', () => { document.querySelectorAll('.speed-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); audioPlayer.playbackRate=parseFloat(btn.dataset.speed); }); });
+
+/* ============================================
+   Helpers & Karaoke
+   ============================================ */
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+let karaokeWords = [];
+function setupKaraoke(text) {
+  karaokeWords = text.split(/\s+/).filter(Boolean);
+  karaokeLine.innerHTML = karaokeWords.map((w,i) => `<span class="word" data-idx="${i}">${escapeHtml(w)}</span> `).join('');
+}
+function updateKaraokeHighlight(progress) {
+  if (!karaokeWords.length) return;
+  const idx = Math.min(Math.floor(progress * karaokeWords.length), karaokeWords.length - 1);
+  karaokeLine.querySelectorAll('.word').forEach((el,i) => { el.classList.toggle('spoken', i < idx); el.classList.toggle('current', i === idx); });
+}
+
+/* ============================================
+   History (last 5 takes, persisted in IndexedDB)
+   ============================================ */
+const HISTORY_DB_NAME = 'ispeakmasri_db';
+const HISTORY_STORE = 'takes';
+
+function openHistoryDB() {
+  return new Promise((resolve, reject) => {
+    if (!window.indexedDB) { reject(new Error('IndexedDB unavailable')); return; }
+    const req = indexedDB.open(HISTORY_DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(HISTORY_STORE)) {
+        db.createObjectStore(HISTORY_STORE, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function saveHistoryToDB() {
+  try {
+    const db = await openHistoryDB();
+    const tx = db.transaction(HISTORY_STORE, 'readwrite');
+    const store = tx.objectStore(HISTORY_STORE);
+    store.clear();
+    history.slice(0, MAX_HISTORY).forEach(item => {
+      store.put({
+        id: item.id,
+        text: item.text,
+        blob: item.blob,
+        duration: item.duration || 0,
+        createdAt: item.createdAt || Date.now(),
+      });
+    });
+    tx.oncomplete = () => db.close();
+    tx.onerror = () => db.close();
+  } catch {
+    // Graceful fallback: in-memory history still works if IndexedDB is blocked
+  }
+}
+
+async function loadHistoryFromDB() {
+  try {
+    const db = await openHistoryDB();
+    const items = await new Promise((resolve, reject) => {
+      const tx = db.transaction(HISTORY_STORE, 'readonly');
+      const req = tx.objectStore(HISTORY_STORE).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+    items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    items.forEach(item => {
+      if (!item.blob || history.some(h => h.id === item.id)) return;
+      history.push({
+        id: item.id,
+        text: item.text,
+        blob: item.blob,
+        blobUrl: URL.createObjectURL(item.blob),
+        duration: item.duration || 0,
+        createdAt: item.createdAt || 0,
+      });
+    });
+    history.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    while (history.length > MAX_HISTORY) {
+      const evicted = history.pop();
+      if (evicted && evicted.blobUrl && !isUrlReferenced(evicted.blobUrl)) {
+        URL.revokeObjectURL(evicted.blobUrl);
+      }
+    }
+    renderHistory();
+  } catch {
+    // Ignore DB errors
+  }
+}
+
+function renderHistory() {
+  if (!history.length) { historyCard.classList.remove('visible'); return; }
+  historyCard.classList.add('visible');
+  historyList.innerHTML = history.map((item,i) => `
+    <div class="history-item">
+      <button class="history-play" data-idx="${i}" aria-label="تشغيل"><svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg></button>
+      <span class="history-text">${escapeHtml(item.text)}</span>
+      ${item.id === activeHistoryId ? '<span class="history-tag">الحالي</span>' : ''}
+      <span class="history-dur">${fmtTime(item.duration)}</span>
+      <a class="history-dl" href="${item.blobUrl}" download="ispeakmasri-take-${i+1}.wav" aria-label="تحميل">↓</a>
+    </div>
+  `).join('');
+  historyList.querySelectorAll('.history-play').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = history[parseInt(btn.dataset.idx, 10)];
+      if (!item) return;
+      selectAudio(item.blob, item.text, { addToHistory: false, historyId: item.id, existingUrl: item.blobUrl });
+    });
+  });
+}
+
+/* ============================================
+   Theme (Dark / Light)
+   ============================================ */
+function applyTheme(theme) {
+  const isLight = theme === 'light';
+  document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark');
+  $('icon-sun').style.display = isLight ? 'none' : 'block';
+  $('icon-moon').style.display = isLight ? 'block' : 'none';
+  $('theme-label').textContent = isLight ? 'داكن · Dark' : 'فاتح · Light';
+  try { localStorage.setItem('ispeakmasri_theme', isLight ? 'light' : 'dark'); } catch {}
+}
+$('btn-theme').addEventListener('click', () => {
+  const cur = document.documentElement.getAttribute('data-theme');
+  applyTheme(cur === 'light' ? 'dark' : 'light');
+});
+
+/* Init: apply saved theme, default preset, and load saved history */
+applyTheme((() => { try { return localStorage.getItem('ispeakmasri_theme') || 'dark'; } catch { return 'dark'; } })());
+applyPreset('natural');
+loadHistoryFromDB();
+</script>
+</body>
+</html>

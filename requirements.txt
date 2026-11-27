@@ -1,4 +1,10 @@
-gradio
+# Install PyTorch + torchaudio first for your GPU/CUDA version from https://pytorch.org/get-started/locally/
+# Web server & UI
+fastapi
+uvicorn
+python-multipart
+
+# Audio & ML dependencies
 numpy==1.26.0
 resampy==0.4.3
 librosa==0.10.0
@@ -10,6 +16,8 @@ resemble-perth==1.0.1
 silero-vad==5.1.2
 conformer==0.3.2
 safetensors
+huggingface_hub
+tqdm
 
 # Optional language-specific dependencies
 # Uncomment the ones you need for specific languages:
